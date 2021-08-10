@@ -9,46 +9,36 @@ from scipy.spatial.distance import pdist,squareform
 from sklearn import metrics
 
 def removeNa(data,dropNaThr):
-    print("Try to remove nan values with a threshold. ")
+    print("Try to remove nan features with a threshold. ")
     percent = (data.isna().sum()/data.isna().count()).sort_values(ascending=False)
-    print("The percentage of nan values in each col: ",percent)
+    print("The percentage of nan features in each col: ",percent)
     data = data.drop(percent[percent>dropNaThr].index,axis=1)
-    print("Since the threshold is {0}, we drop: ".format(dropNaThr),percent[percent>dropNaThr].index)
-    return data
+    print("Since the threshold is {0}, we drop cols: ".format(dropNaThr),percent[percent>dropNaThr].index)
+    return data,percent[percent>dropNaThr].index
     
 
-def impute_knn(df,fillNaK):
-    ttn = df.select_dtypes(include=[np.number])
-    ttc = df.select_dtypes(exclude=[np.number])
+def impute_knn(df,fillNaK,fillNaKCols):
 
-    cols_nan = df.columns[ttn.isna().any()].tolist()         # columns w/ nan 
-    cols_no_nan = df.columns.difference(cols_nan).values     # columns w/n nan
+    cols_nan = df.columns[df.isna().any()].tolist()         # columns w/ nan 
 
     for col in cols_nan:
         nanCount = df[col].isna().sum()
         print("Fill {0} nans in col ".format(nanCount)+str(col)+" with default {0}-nn strategy. ".format(fillNaK))
-        imp_test = ttn[ttn[col].isna()]   # indicies which have missing data will become our test set
-        imp_train = ttn.dropna()          # all indicies which which have no missing data 
+        #imp_test = df[df[col].isna()]   # indicies which have missing data will become our test set
+        if col in fillNaKCols.keys():
+            imp=df[fillNaKCols[col]]
+        else:
+            imp=df
+        imp=imp.dropna()
+        imp=pd.get_dummies(imp)
+        imp=scaling(imp,None)
+        imp_train= imp.loc[~df[col].isna()]
+        imp_test = imp.loc[df[col].isna()]
         model = KNeighborsRegressor(n_neighbors=fillNaK)  # KNR Unsupervised Approach
-        knr = model.fit(imp_train[cols_no_nan], imp_train[col])
-        ttn.loc[ttn[col].isna(), col] = knr.predict(imp_test[cols_no_nan])
+        knr = model.fit(imp_train, df.loc[~df[col].isna(),col])
+        df.loc[df[col].isna(), col] = knr.predict(imp_test)
     
-    return pd.concat([ttn,ttc],axis=1)
-
-train_test = impute_knn(train_test)
-
-
-objects = []
-for i in train_test.columns:
-    if train_test[i].dtype == object:
-        objects.append(i)
-train_test.update(train_test[objects].fillna('None'))
-
-# # Checking NaN presence
-
-for col in train_test:
-    if train_test[col].isna().sum() > 0:
-        print(train_test[col][0])
+    return df
 
 def fillNa(data,fillNaStrg,fillNaValue,fillNaK,fillNaKCols):
     print("Try to fill nan values. ")
@@ -78,6 +68,7 @@ def fillNa(data,fillNaStrg,fillNaValue,fillNaK,fillNaKCols):
             else:
                 raise Exception("Unsupported filling strategy. ")
             data[key] = data[key].fillna(num)
+    return impute_knn(data,fillNaK,fillNaKCols)
 
 '''
 def encoding(data,orderEncode):
@@ -101,24 +92,41 @@ def encoding(data,orderEncode):
 def normalization(data,normalizeCols):
     if normalizeCols is None:
         columns=[key for key in data.columns if data[key].dtype!=object]
-    else:
-        assert type(normalizeCols)==list
+    elif type(normalizeCols)==list:
         columns=normalizeCols
-    if len(columns)==0:
-        return data
-    print("Try to normalize numerical values. ")
-    for col in columns:
-        p=stats.kstest(data[col], 'norm', (data[col].mean(), data[col].std())).pvalue()
-        while p<0.05:
-            print("Col "+str(col)+"failed to pass k-s test with p-value={0}. Try to normalize it. ".format(p))
-            if data[col].skew()>0:
-                data[col]=np.log1p(data[col])
-            else:
-                data[col]=np.exmp1(data[col])
+    else:
+        assert type(normalizeCols)==dict
+        print("Try to normalize numerical values. ")
+        for col in normalizeCols.keys():
+            if normalizeCols[col]>0:
+                for i in range(normalizeCols[col]):
+                    data[col]=np.exmp1(data[col])
+            elif normalizeCols[col]<0:
+                for i in range(-normalizeCols[col]):
+                    data[col]=np.log1p(data[col])
+        return data,normalizeCols
+    if len(columns)!=0:
+        print("Try to normalize numerical values. ")
+        normalizeCols={}
+        for col in columns:
+            normalizeCols[col]=0
             p=stats.kstest(data[col], 'norm', (data[col].mean(), data[col].std())).pvalue()
-        print("Col "+str(col)+" passed k-s test with p-value={0}".format(p))
-    return data
-    
+            i=0
+            while p<0.05:
+                if i>=2:
+                    break
+                print("Col "+str(col)+"failed to pass k-s test with p-value={0}. Try to normalize it. ".format(p))
+                if data[col].skew()>0:
+                    data[col]=np.log1p(data[col])
+                    normalizeCols[col]-=1
+                else:
+                    data[col]=np.exmp1(data[col])
+                    normalizeCols[col]+=1
+                p=stats.kstest(data[col], 'norm', (data[col].mean(), data[col].std())).pvalue()
+                i+=1
+            else:
+                print("Col "+str(col)+" passed k-s test with p-value={0}".format(p))
+    return data,normalizeCols
 
 def filtering(data,filterCols,means=None,stds=None):
     if filterCols is None:
@@ -136,7 +144,7 @@ def filtering(data,filterCols,means=None,stds=None):
         indexs=(data[cols]>(means+3*stds))|(data[cols]<(means-3*stds))
         index=indexs.any(axis=1)
         data=data.loc[~index]
-        print("Dropped {0} rows after screening. ".format(np.sum(index)))
+        print("Dropped rows: ",np.argwhere(index==1))
     return data,means,stds
 
 def scaling(data,scaleCols,means=None,vars=None):
@@ -151,6 +159,8 @@ def scaling(data,scaleCols,means=None,vars=None):
         means=np.mean(data[cols],axis=0)
         vars=np.var(data[cols],axis=0)
         data[cols]=(data[cols]-means)/vars
+        print("The means are: ",means)
+        print("The variations are: ",vars)
     return data,means,vars
 
 def varianceSelection(data,varianceSelectionCols,varianceSelectionThr):

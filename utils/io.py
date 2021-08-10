@@ -52,3 +52,9 @@ def readLabel(data,label,delimiter,labelId):
         label = label.drop(labelId,axis=1)
     print("Get features with {0} rows and {1} cols and labels with {2} rows. ".format(data.shape[0],data.shape[1],label.shape[1]))
     return data,label
+
+def readModel(path):
+    print("Read model from "+path)
+
+def saveModel(parameters,path):
+    print("Save model to "+path)

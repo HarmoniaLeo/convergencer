@@ -1,1 +1,1 @@
-from regressor import regressor
+from regressor import regressPipeline
