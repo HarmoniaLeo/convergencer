@@ -53,7 +53,9 @@ class regressPipeline:
             scaleCols=scaleCols,ifPCA=ifPCA,PCAThr=PCAThr)
 
         if ifTrain:
-            self.train(modelPath=modelPath,checkPointPath=None,modelTypes=modelTypes,accThr=accThr,maxEpochFinetuning=maxEpochFinetuning,maxBaggingModelNum=maxBaggingModelNum,maxEpochBagging=maxEpochBagging)
+            self.train(modelPath=modelPath,checkPointPath=None,modelTypes=modelTypes,
+            accThr=accThr,maxEpochFinetuning=maxEpochFinetuning,
+            maxBaggingModelNum=maxBaggingModelNum,maxEpochBagging=maxEpochBagging)
         
 
     def preProcess(self,dropNaThr=0.15,fillNaStrg=None,fillNaValue={},fillNaK=5,fillNaKCols={},
@@ -151,19 +153,21 @@ class regressPipeline:
         self.X = self.pcaTransformer.transform(self.X)
         print("PCA applied. ")
     
-    def train(self,modelPath=None,checkPointPath=None,modelTypes=[],accThr=0.98,maxEpochFinetuning=100,maxBaggingModelNum=5,maxEpochBagging=100):
+    def train(self,modelPath=None,checkPointPath=None,modelTypes=[],accThr=0.98,
+    maxEpochFinetuning=100,maxBaggingModelNum=5,maxEpochBagging=100):
         if modelPath is None:
             self.models=[
 
             ]
             print("Start Training. ")
-            bestModels,bestTrainAcc,bestTestAccs=finetune(self.X,self.y,self.models,maxEpochFinetuning,accThr,maxBaggingModelNum,checkPointPath)
+            bestModels,bestTrainAcc,bestTestAccs=finetune(self.X,self.y,self.models,
+            maxEpochFinetuning,accThr,maxBaggingModelNum,checkPointPath)
             self.model=bestModels[0]
             bestTrainAcc=bestTrainAcc[0]
             bestTestAcc=bestTestAccs[0]
             baggingModel=bagging(bestModels)
             print("Start Bagging. ")
-            baggingTrainAcc,baggingTestAcc=bagging.train(self.X,self.y,maxEpochBagging,checkPointPath)
+            baggingTrainAcc,baggingTestAcc=baggingModel.train(self.X,self.y,maxEpochBagging,checkPointPath)
             if baggingTestAcc>bestTestAcc:
                 self.model=baggingModel
                 bestTrainAcc=baggingTrainAcc

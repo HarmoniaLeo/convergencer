@@ -56,37 +56,37 @@ def finetune(X,y,models,maxEpoch,accThr,maxModelNum,checkPointPath=None):
     return bestModels,bestTrainAccs,bestTestAccs
 
 def generate(length,num=50):
-    weights=[]
+    parameters=[]
     for i in range(num):
-        weights.append(np.random.uniform(0,1,length))
-    return weights
+        parameters.append(np.random.uniform(0,1,length))
+    return parameters
 
-def evolution(scores,weights):
+def evolution(scores,parameters):
     scores=np.array(scores)
     scoresum=np.sum(scores)
     plist=scores/scoresum
     plist=np.cumsum(plist)
     plist=plist.tolist()
     plist.insert(0,0)
-    reWeights=[]
-    for i in range(len(weights)):
+    reparameters=[]
+    for i in range(len(parameters)):
         sample=random.random()
         for j in range(len(plist)-1):
             if (sample>plist[j])and(sample<plist[j]):
-                reWeights.append(weights[j])
+                reparameters.append(parameters[j])
                 break
-    weights=reWeights
-    for i in range(0,len(weights),2):
-        w1=weights[i]
-        w2=weights[i+1]
-        splitPoint=random.randrange(1,len(weights[i]))
-        w3=np.concatenate([weights[i][:splitPoint],weights[i+1][splitPoint:]])
-        w4=np.concatenate([weights[i+1][:splitPoint],weights[i][splitPoint:]])
-        weights[i]=w3
-        weights[i+1]=w4
-    for weight in weights:
+    parameters=reparameters
+    for i in range(0,len(parameters),2):
+        w1=parameters[i]
+        w2=parameters[i+1]
+        splitPoint=random.randrange(1,len(parameters[i]))
+        w3=np.concatenate([parameters[i][:splitPoint],parameters[i+1][splitPoint:]])
+        w4=np.concatenate([parameters[i+1][:splitPoint],parameters[i][splitPoint:]])
+        parameters[i]=w3
+        parameters[i+1]=w4
+    for weight in parameters:
         for j in range(len(weight)):
             sample=random.random()
             if sample<0.1:
                 weight[j]=random.random()
-    return weights
+    return parameters

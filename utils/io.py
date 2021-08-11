@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pickle
 
 def readNpy(dir):
     return pd.DataFrame(np.load(dir))
@@ -55,6 +56,10 @@ def readLabel(data,label,delimiter,labelId):
 
 def readModel(path):
     print("Read model from "+path)
+    with open(path, 'rb') as f:
+        return pickle.load(f)
 
 def saveModel(parameters,path):
     print("Save model to "+path)
+    with open(path, 'wb') as f:
+        pickle.dump(parameters, f, pickle.HIGHEST_PROTOCOL)
