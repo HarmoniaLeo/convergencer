@@ -1,10 +1,7 @@
 import numpy as np
 import random
 
-def finetune(X,y,models,maxEpoch,accThr,maxModelNum,checkPointPath=None):
-    bestModels=[]
-    bestTrainAccs=[]
-    bestTestAccs=[]
+def finetune(X,y,models,maxEpoch,accThr,maxModelNum,bestModels=[],bestTrainAccs=[],bestTestAccs=[],checkPointPath=None):
     for i in range(maxEpoch):
         print("Fine-tuning epoch {0}:".format(i+1))
         usedModels=[]
@@ -12,34 +9,12 @@ def finetune(X,y,models,maxEpoch,accThr,maxModelNum,checkPointPath=None):
             print("No more model for training. ")
             break
         for model in models:
-            print("Model: ",model)
-            '''
-            if len(bestModels)==0:
-                bestModels.append(model)
-                bestTrainAccs.append(trainAcc)
-                bestTestAccs.append(testAcc)
-                print("Ranking 1")
-            '''
-            trainAcc,testAcc=model.train(X,y,checkPointPath=checkPointPath+"/fine-tune-{0}-".format(i))
-            for i in range(len(bestModels)):
-                index=i
-                if testAcc>bestTestAccs[i]:
-                    bestModels.insert(index,model)
-                    bestTrainAccs.insert(index,trainAcc)
-                    bestTestAccs.insert(index,testAcc)
-                    print("Ranking {0}. ".format(i+1))
-                    if len(bestModels)>maxModelNum:
-                        bestModels.pop()
-                        bestTrainAccs.pop()
-                        bestTestAccs.pop()
-                    break
-            else:
-                if len(bestModels)<maxModelNum:
-                    bestModels.append(model)
-                    bestTrainAccs.append(trainAcc)
-                    bestTestAccs.append(testAcc)
-                    print("Ranking {0}. ".format(len(bestModels)))
-            if trainAcc>0.9*accThr:
+            print("Model: ",model,model.parameters)
+            bestModels,bestTrainAccs,bestTestAccs=geneticSearch(X,y,model,1,30,maxModelNum,bestModels,bestTrainAccs,bestTestAccs,
+            checkPointPath=None if checkPointPath is None else checkPointPath+"/fine-tune-{0}-".format(i+1))
+        for bestModel in bestModels:
+            print("Model: ",model,model.parameters)
+            if (trainAcc>0.9*accThr) and (testAcc>1.9*trainAcc-1):
                 if trainAcc<accThr:
                     print("Underfit",trainAcc)
                     model=model.underfit(accThr-trainAcc)
@@ -56,6 +31,8 @@ def finetune(X,y,models,maxEpoch,accThr,maxModelNum,checkPointPath=None):
     return bestModels,bestTrainAccs,bestTestAccs
 
 def generate(length,num=50):
+    if length==0:
+        return [[]]
     parameters=[]
     for i in range(num):
         parameters.append(np.random.uniform(0,1,length))
@@ -76,17 +53,53 @@ def evolution(scores,parameters):
                 reparameters.append(parameters[j])
                 break
     parameters=reparameters
-    for i in range(0,len(parameters),2):
-        w1=parameters[i]
-        w2=parameters[i+1]
-        splitPoint=random.randrange(1,len(parameters[i]))
-        w3=np.concatenate([parameters[i][:splitPoint],parameters[i+1][splitPoint:]])
-        w4=np.concatenate([parameters[i+1][:splitPoint],parameters[i][splitPoint:]])
-        parameters[i]=w3
-        parameters[i+1]=w4
+    if len(parameters)>=2:
+        for i in range(0,len(parameters),2):
+            w1=parameters[i]
+            w2=parameters[i+1]
+            splitPoint=random.randrange(1,len(parameters[i]))
+            w3=np.concatenate([parameters[i][:splitPoint],parameters[i+1][splitPoint:]])
+            w4=np.concatenate([parameters[i+1][:splitPoint],parameters[i][splitPoint:]])
+            parameters[i]=w3
+            parameters[i+1]=w4
     for weight in parameters:
         for j in range(len(weight)):
             sample=random.random()
             if sample<0.1:
                 weight[j]=random.random()
     return parameters
+
+def geneticSearch(X,y,model,maxEpoch,maxSeed,maxModelNum,bestModels=[],bestTrainAccs=[],bestTestAccs=[],checkPointPath=None):
+    parameters=generate(model.paraLength,maxSeed)
+    for i in range(maxEpoch):
+        print("Parameter searching epoch {0}:".format(i+1))
+        scores=[]
+        for parameter in parameters:
+            newmodel,parameters=model.createFromGene(parameter)
+            newmodel,trainAcc,testAcc=newmodel.train(X,y)
+            scores.append(testAcc)
+            print("Parameters: ",parameters)
+            print("Score on train set: ",trainAcc)
+            print("Score on test set: ",testAcc)
+            for j in range(len(bestModels)):
+                if testAcc>bestTestAccs[j]:
+                    bestModels.insert(j,newmodel)
+                    bestTrainAccs.insert(j,trainAcc)
+                    bestTestAccs.insert(j,testAcc)
+                    print("Ranking {0}. ".format(j+1))
+                    if len(bestModels)>maxModelNum:
+                        bestModels.pop()
+                        bestTrainAccs.pop()
+                        bestTestAccs.pop()
+                    break
+            else:
+                if len(bestModels)<maxModelNum:
+                    bestModels.append(newmodel)
+                    bestTrainAccs.append(trainAcc)
+                    bestTestAccs.append(testAcc)
+                    print("Ranking {0}. ".format(len(bestModels)))
+        if not(checkPointPath is None):
+            for j,model in enumerate(bestModels):
+                saveModel(model.parameters,checkPointPath+"para-search-{0}-ranking-{1}".format(i+1,j+1)+str()+".pkl")
+        parameters=evolution(scores,parameters)
+    return bestModels,bestTrainAccs,bestTestAccs
