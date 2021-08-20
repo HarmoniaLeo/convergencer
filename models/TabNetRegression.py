@@ -5,9 +5,44 @@ from base import base
 import multiprocessing
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.optim
+from pytorch_tabnet.metrics import Metric
+from sklearn.metrics import r2_score,mean_squared_log_error
+from utils.metrics import mape,mspe
+
+class fr2(Metric):
+    def __init__(self):
+        self._name = "r2"
+        self._maximize = True
+
+    def __call__(self, y_true, y_score):
+        return r2_score(y_true, y_score[:, 1])
+
+class fmsle(Metric):
+    def __init__(self):
+        self._name = "msle"
+        self._maximize = False
+
+    def __call__(self, y_true, y_score):
+        return mean_squared_log_error(y_true, y_score[:, 1])
+
+class fmape(Metric):
+    def __init__(self):
+        self._name = "mape"
+        self._maximize = False
+
+    def __call__(self, y_true, y_score):
+        return mape(y_true, y_score[:, 1])
+
+class fmspe(Metric):
+    def __init__(self):
+        self._name = "mspe"
+        self._maximize = False
+
+    def __call__(self, y_true, y_score):
+        return mspe(y_true, y_score[:, 1])
 
 class TabNetRegression(base):
-    def __init__(self,X,y,parameters={},maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
+    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
         self.setParameter("n_d",8,parameters)
         self.setParameter("n_steps",3,parameters)
         self.setParameter("gamma",1.3,parameters)
@@ -19,7 +54,7 @@ class TabNetRegression(base):
         self.setParameter("batch_size",32,parameters)
         self.setParameter("iterations",500,parameters)
         self.setParameter("earlystop",5,parameters)
-        super().__init__(X, y, parameters=parameters, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
+        super().__init__(X, y, parameters=parameters,metric=metric, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
 
     def getParameterRange(self, X, y, parameters={}):
         self.setParameter("n_d",(int,"uni",8,64),parameters)
@@ -35,7 +70,7 @@ class TabNetRegression(base):
         self.setParameter("earlystop",(object,5,10,15),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             optimizer=torch.optim.Adam(dict(lr=parameters["learning_rate"]))
             return TabNetRegressor(
@@ -54,10 +89,28 @@ class TabNetRegression(base):
             model=TabNetRegressor()
             return model.load_model(modelPath)
 
-    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters):
-        parameters=parameters.copy()
-        model.fit(X_train,y_train.values,eval_set=[(X_test, y_test.values)],patience=parameters["earlystop"],
-        batch_size=parameters["batch_size"],max_epochs=parameters["iterations"],num_workers=multiprocessing.cpu_count())
+    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
+        if metric=="r2":
+            score=fr2
+        elif metric=="mse":
+            score="mse"
+        elif metric=="mae":
+            score="mae"
+        elif metric=="msle":
+            score=fmsle
+        elif metric=="mape":
+            score=fmape
+        elif metric=="mspe":
+            score=fmspe
+        model.fit(
+            X_train,y_train.values,
+            eval_set=[(X_test, y_test.values)],
+            patience=parameters["earlystop"],
+            batch_size=parameters["batch_size"],
+            max_epochs=parameters["iterations"],
+            num_workers=multiprocessing.cpu_count(),
+            eval_metric=[score]
+            )
     
     def saveModel(self, path):
         self.model.save_model(path)

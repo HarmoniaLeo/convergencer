@@ -1,11 +1,25 @@
+from models.xgb import fmape
 from tensorflow.keras.models import Sequential,load_model
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import callbacks
 from base import base
+import keras.backend as K
+from sklearn.metrics import r2_score
+from utils.metrics import mspe
+
+def fr2(y_true, y_pred):
+    y_true=K.eval(y_true)
+    y_pred=K.eval(y_pred)
+    return r2_score(y_true,y_pred)
+
+def fmspe(y_true, y_pred):
+    y_true=K.eval(y_true)
+    y_pred=K.eval(y_pred)
+    return mspe(y_true,y_pred)
 
 class ANNRegression(base):
-    def __init__(self,X,y,parameters={},maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
+    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
         self.setParameter("layers",3,parameters)
         self.setParameter("hidden_count",64,parameters)
         self.setParameter("dropout",0.2,parameters)
@@ -13,7 +27,7 @@ class ANNRegression(base):
         self.setParameter("batch_size",32,parameters)
         self.setParameter("iterations",500,parameters)
         self.setParameter("earlystop",5,parameters)
-        super().__init__(X, y, parameters=parameters, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
+        super().__init__(X, y, parameters=parameters,metric=metric,maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
 
     def getParameterRange(self, X, y, parameters={}):
         self.setParameter("layers",(int,"uni",3,12),parameters)
@@ -25,7 +39,7 @@ class ANNRegression(base):
         self.setParameter("earlystop",(object,5,10,15),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             model = Sequential()
             model.add(Dense(X.shape[1],activation='relu'))
@@ -33,12 +47,24 @@ class ANNRegression(base):
                 model.add(Dense(parameters["hidden_count"],activation='relu'))
                 model.add(Dropout(parameters["dropout"]))
             model.add(Dense(1))
-            model.compile(optimizer=Adam(parameters["learning_rate"]), loss="mse")
+            if metric=="r2":
+                score=fr2
+            elif metric=="mse":
+                score="mse"
+            elif metric=="mae":
+                score="mae"
+            elif metric=="msle":
+                score="msle"
+            elif metric=="mape":
+                score="mape"
+            elif metric=="mspe":
+                score=fmspe
+            model.compile(optimizer=Adam(parameters["learning_rate"]), loss="mse",metrics=score)
             return model
         else:
             return load_model(modelPath)
 
-    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters):
+    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters, metric):
         es = callbacks.EarlyStopping(monitor='val_loss', patience=parameters["earlystop"], verbose=1, restore_best_weights=True)
         rlp = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=1e-10, mode='min', verbose=1)
         model.fit(X_train, y_train.values,

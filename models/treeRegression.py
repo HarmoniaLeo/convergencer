@@ -23,7 +23,7 @@ class dtRegression(base):
         self.setParameter("min_impurity_decrease",(float,"exp",0.0,0.01*mst)*mst,parameters)
         return super().getParameterRange(X,y,parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return DecisionTreeRegressor(
             max_depth=parameters["max_depth"],
@@ -47,7 +47,7 @@ class rfRegression(dtRegression):
         self.setParameter("max_depth",(int,"uni",1,10),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return RandomForestRegressor(
                 n_estimators=parameters["num"],
@@ -76,7 +76,7 @@ class gbRegression(rfRegression):
         self.setParameter("learning_rate",(float,"exp",0.0,1.0),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return GradientBoostingRegressor(
             n_estimators=parameters["num"],

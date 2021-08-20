@@ -23,7 +23,7 @@ class SVMRegression(SVMRegressionBase):
         self.setParameter("kernel",(object,"linear","rbf","sigmoid","precomputed"),parameters)
         return super().getParameterRange(X,y,parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return SVR(kernel=parameters["kernel"],
             C=parameters["C"])
@@ -41,7 +41,7 @@ class SVMRegression_poly(SVMRegressionBase):
         self.setParameter("degree",(int,"uni",2,8),parameters)
         return super().getParameterRange(X,y,parameters=parameters)
     
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return SVR(kernel="poly",
         degree=parameters["degree"],

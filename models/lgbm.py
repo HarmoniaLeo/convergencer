@@ -3,9 +3,41 @@ from base import base
 import numpy as np
 import math
 import torch
+from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
+from utils.metrics import mape,mspe
+
+def fr2(preds, train_data):
+    label = train_data.get_label()
+    score = r2_score(label,preds)
+    return 'r2',score,True
+
+def fmse(preds, train_data):
+    label = train_data.get_label()
+    score = mean_squared_error(label,preds)
+    return 'mse',score,False
+
+def fmae(preds, train_data):
+    label = train_data.get_label()
+    score = mean_absolute_error(label,preds)
+    return 'mse',score,False
+
+def fmsle(preds, train_data):
+    label = train_data.get_label()
+    score = mean_squared_log_error(label,preds)
+    return 'msle',score,False
+
+def fmape(preds, train_data):
+    label = train_data.get_label()
+    score = mape(label,preds)
+    return 'mape',score,False
+
+def fmspe(preds, train_data):
+    label = train_data.get_label()
+    score = mspe(label,preds)
+    return 'mspe',score,False
 
 class lgbmRegression(base):
-    def __init__(self,X,y,parameters={},maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
+    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
         mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         self.setParameter("num",1000,parameters)
         self.setParameter("learning_rate",0.3,parameters)
@@ -21,7 +53,7 @@ class lgbmRegression(base):
         self.setParameter("lambda_l1",1.0,parameters)
         self.setParameter("lambda_l2",1.0,parameters)
         self.setParameter("early_stopping_round",10,parameters)
-        super().__init__(X, y, parameters=parameters, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
+        super().__init__(X, y, parameters=parameters,metric=metric, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
 
     def getParameterRange(self, X, y, parameters={}):
         mst=np.sum(np.power(y-np.mean(y),2))/len(y)
@@ -41,19 +73,31 @@ class lgbmRegression(base):
         self.setParameter("early_stopping_round",(object,5,10,15),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return None
         return lgb.Booster(model_file=modelPath)
 
-    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters):
+    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
         parameters=parameters.copy()
         rounds=parameters.pop("num")
         if(torch.cuda.is_available()):self.setParameter("device","gpu",parameters)
         self.setParameter("boosting","gbdt",parameters)
         train_data=lgb.Dataset(X_train,y_train)
         test_data=lgb.Dataset(X_test,y_test)
-        return lgb.train(parameters, train_data,rounds, valid_sets=[test_data])
+        if metric=="r2":
+            score=fr2
+        elif metric=="mse":
+            score=fmse
+        elif metric=="mae":
+            score=fmae
+        elif metric=="msle":
+            score=fmsle
+        elif metric=="mape":
+            score=fmape
+        elif metric=="mspe":
+            score=fmspe
+        return lgb.train(parameters, train_data,rounds, valid_sets=[test_data],feval=score)
     
     def saveModel(self, path):
         print("Save model as: ",path)
@@ -63,27 +107,27 @@ class lgbmRegression(base):
         return "lgbmRegression"
 
 class lgbmRegression_dart(lgbmRegression):
-    def __init__(self,X,y,parameters={},maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
+    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
         self.setParameter("drop_rate",0.1,parameters)
-        super().__init__(X, y, parameters=parameters, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
+        super().__init__(X, y, parameters=parameters,metric=metric, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
 
     def getParameterRange(self, X, y, parameters={}):
         self.setParameter("drop_rate",(float,"uni",0.0,0.5),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters):
+    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
         parameters=parameters.copy()
         self.parameters("boosting","dart",parameters)
-        return super().fitModel(X_train, y_train, X_test, y_test, model, parameters)
+        return super().fitModel(X_train, y_train, X_test, y_test, model, parameters,metric)
         
     def __str__(self):
         return "lgbmRegression_dart"
 
 class lgbmRegression_goss(lgbmRegression):
-    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters):
+    def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
         parameters=parameters.copy()
         self.parameters("boosting","goss",parameters)
-        return super().fitModel(X_train, y_train, X_test, y_test, model, parameters)
+        return super().fitModel(X_train, y_train, X_test, y_test, model, parameters,metric)
         
     def __str__(self):
         return "lgbmRegression_goss"

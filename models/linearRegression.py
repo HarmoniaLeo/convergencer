@@ -12,7 +12,7 @@ class ridge(base):
         self.setParameter("alpha",(float,"exp",0.0,1.0),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return Ridge(alpha=parameters["alpha"])
         return super().getModel(X, y, parameters, modelPath)
@@ -21,7 +21,7 @@ class ridge(base):
         return "ridge"
 
 class lasso(ridge):
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return Lasso(alpha=np.exp(parameters["alpha"]))
         return super().getModel(X, y, parameters, modelPath)
@@ -38,7 +38,7 @@ class elasticNet(ridge):
         self.setParameter("l1Rate",(float,"uni",0.0,1.0),parameters)
         return super().getParameterRange(X,y,parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return ElasticNet(alpha=parameters["alpha"],l1_ratio=parameters["l1Rate"])
         return super().getModel(X, y, parameters, modelPath)        
@@ -47,7 +47,7 @@ class elasticNet(ridge):
         return "elasticNet"
 
 class multiTaskLasso(lasso):
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return MultiTaskLasso(alpha=parameters["alpha"])
         return super().getModel(X, y, parameters, modelPath)
@@ -56,7 +56,7 @@ class multiTaskLasso(lasso):
         return "multiTaskLasso"
 
 class multiTaskElasticNet(elasticNet):
-    def getModel(self, X, y, parameters, modelPath):
+    def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return MultiTaskElasticNet(alpha=parameters["alpha"],l1_ratio=parameters["l1Rate"])
         return super().getModel(X, y, parameters, modelPath)

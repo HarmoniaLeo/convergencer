@@ -1,3 +1,4 @@
+from tensorflow.python.keras.backend import maximum
 from utils.optimizing import bayesianOpt
 from sklearn.model_selection import KFold
 import numpy as np
@@ -9,7 +10,7 @@ from utils.metrics import mape,mspe
 class base:
     def __init__(self,X=None,y=None,parameters={},metric="r2",modelPath=None,maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
         self.parameters=parameters
-        self.model=self.getModel(X,y,self.parameters,modelPath)
+        self.model=self.getModel(X,y,self.parameters,modelPath,metric)
         if modelPath is None:
             self.model,self.trainAcc,self.testAcc=self.trainModel(X,y,self.model,self.parameters,metric)
             optimizer = bayesianOpt(pbounds=self.getParameterRange(X,y))
@@ -17,10 +18,14 @@ class base:
             model=self.model
             testAcc=self.testAcc
             for i in range(maxEpoch):
-                next_point_to_probe = optimizer.next(params=next_point_to_probe,target=testAcc)
-                model=self.getModel(next_point_to_probe)
+                if metric=="r2":
+                    maximum=True
+                else:
+                    maximum=False
+                next_point_to_probe = optimizer.next(params=next_point_to_probe,target=testAcc if maximum else -testAcc)
+                model=self.getModel(X,y,self.parameters,modelPath,metric)
                 model,trainAcc,testAcc=self.trainModel(X,y,model,next_point_to_probe)
-                if testAcc>self.testAcc:
+                if ((testAcc>self.testAcc) if maximum else (testAcc<self.testAcc)):
                     self.model=model
                     self.parameters=next_point_to_probe
                     self.trainAcc=trainAcc
@@ -46,7 +51,7 @@ class base:
     def getParameterRange(self,X,y,parameters={}):
         return parameters
     
-    def getModel(self,X,y,parameters,modelPath):
+    def getModel(self,X,y,parameters,modelPath,metric):
         if modelPath is None:
             return None
         else:
