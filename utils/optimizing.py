@@ -1,5 +1,17 @@
 import numpy as np
 import random
+from bayes_opt import BayesianOptimization,UtilityFunction
+
+class bayesianOpt:
+    def __init__(self,pbounds):
+        self.optimizer=BayesianOptimization(f=None,pbounds=pbounds,verbose=2,random_state=1)
+        self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
+
+    def next(self,params,target):
+        self.optimizer.register(params=params,target=target)
+        return self.optimizer.suggest(self.utility)
+
+
 
 def finetune(X,y,models,maxEpoch,accThr,maxModelNum,bestModels=[],bestTrainAccs=[],bestTestAccs=[],checkPointPath=None):
     for i in range(maxEpoch):

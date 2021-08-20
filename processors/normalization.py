@@ -9,7 +9,8 @@ class normalization(base):
 
     def fit(self,data):
         if self.normalizeCols is None:
-            columns=[key for key in data.columns if data[key].dtype!=object]
+            ttn = data.select_dtypes(include=[np.number])
+            columns=ttn.columns
         elif type(self.normalizeCols)==list:
             columns=self.normalizeCols
         if len(columns)!=0:

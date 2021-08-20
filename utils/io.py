@@ -55,11 +55,11 @@ def readLabel(data,label,delimiter,labelId):
     return data,label
 
 def readModel(path):
-    print("Read model from "+path)
+    print("Read parameters from "+path)
     with open(path, 'rb') as f:
         return pickle.load(f)
 
 def saveModel(parameters,path):
-    print("Save model to "+path)
+    print("Save parameters to "+path)
     with open(path, 'wb') as f:
         pickle.dump(parameters, f, pickle.HIGHEST_PROTOCOL)

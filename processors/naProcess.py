@@ -1,5 +1,31 @@
 from base import base
-from utils.processing import impute_knn
+from sklearn.neighbors import KNeighborsRegressor
+import numpy as np
+
+def impute_knn(df,fillNaK,fillNaKCols):
+
+    cols_nan = df.columns[df.isna().any()].tolist()         # columns w/ nan 
+
+    for col in cols_nan:
+        nanCount = df[col].isna().sum()
+        print("Fill {0} nans in col ".format(nanCount)+str(col)+" with default {0}-nn strategy. ".format(fillNaK))
+        #imp_test = df[df[col].isna()]   # indicies which have missing data will become our test set
+        if col in fillNaKCols.keys():
+            imp=df[fillNaKCols[col]]
+        else:
+            imp=df
+        imp=imp.dropna()
+        imp=pd.get_dummies(imp)
+        means=np.mean(imp,axis=0)
+        vars=np.var(imp,axis=0)
+        imp=(imp-means)/vars
+        imp_train= imp.loc[~df[col].isna()]
+        imp_test = imp.loc[df[col].isna()]
+        model = KNeighborsRegressor(n_neighbors=fillNaK)  # KNR Unsupervised Approach
+        knr = model.fit(imp_train, df.loc[~df[col].isna(),col])
+        df.loc[df[col].isna(), col] = knr.predict(imp_test)
+    
+    return df
 
 class fillNa(base):
     def __init__(self, parameters):

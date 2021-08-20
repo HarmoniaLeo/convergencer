@@ -7,7 +7,8 @@ class normalizeFilter(base):
     
     def fit(self,data):
         if self.filterCols is None:
-            cols=[key for key in data.columns if data[key].dtype!=object]
+            ttn = data.select_dtypes(include=[np.number])
+            cols=ttn.columns
         else:
             assert type(self.filterCols)==list
             cols=self.filterCols
@@ -30,3 +31,11 @@ class normalizeFilter(base):
     
     def __str__(self):
         return "normalizeFilter"
+
+class naRowFilter(base):
+    def transform(self, data):
+        data = data.dropna()
+        return data
+    
+    def __str__(self):
+        return "naRowFilter"
