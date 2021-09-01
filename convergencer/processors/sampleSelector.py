@@ -21,16 +21,17 @@ class normalizeFilter(base):
             self.stds=data[self.filterCols].std()
     
     def transform(self, data, y):
-        if self.verbose==1:
-            print("\n-------------------------Try to filter data with normal distribution-------------------------")
-            print("Scanning cols: ",self.filterCols)
-            print("The means are: \n",self.means)
-            print("The standard deviations are: \n",self.stds)
-        indexs=(data[self.filterCols]>(self.means+3*self.stds))|(data[self.filterCols]<(self.means-3*self.stds))
-        index=indexs.any(axis=1)
-        data=data.loc[~index]
-        if self.verbose==1:
-            print("Dropped rows: ",np.where(index))
+        if len(self.filterCols)!=0:
+            if self.verbose==1:
+                print("\n-------------------------Try to filter data with normal distribution-------------------------")
+                print("Scanning cols: ",self.filterCols)
+                print("The means are: \n",self.means)
+                print("The standard deviations are: \n",self.stds)
+            indexs=(data[self.filterCols]>(self.means+3*self.stds))|(data[self.filterCols]<(self.means-3*self.stds))
+            index=indexs.any(axis=1)
+            data=data.loc[~index]
+            if self.verbose==1:
+                print("Dropped rows: ",np.where(index))
         return super().transform(data, y=y[data.index])
 
     def __str__(self):
