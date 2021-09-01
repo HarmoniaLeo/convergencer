@@ -9,32 +9,29 @@ class convergencerRegressionData:
         X,self.label=readLabel(train,label,delimiter,labelId)
         test=readData(X_test,delimiter,id)
         self.trainNum=X.shape[0]
-        self.X_train=X
-        self.X_test=test
+        self.data=X.append(test)
         self.ps=[]
     
     def summary(self):
-        data=self.X_train.append(self.X_test)
-        print("All columns: ",data.columns)
-        ttn = data.select_dtypes(exclude=[np.number])
+        print("All columns: ",self.data.columns)
+        ttn = self.data.select_dtypes(exclude=[np.number])
         print("Categorical columns: ",ttn.columns)
-        ttn = data.select_dtypes(include=[np.number])
+        ttn = self.data.select_dtypes(include=[np.number])
         print("Numerical columns: ",ttn.columns)
-        percent = (data.isna().sum()/data.isna().count()).sort_values(ascending=False)
+        percent = (self.data.isna().sum()/self.data.isna().count()).sort_values(ascending=False)
         print("Columns with nan values: ",percent[percent>0])
     
     def ifNan(self,col):
-        data=self.X_train.append(self.X_test)
-        print(data[col].isna().sum()/data[col].isna().count())
+        print(self.data[col].isna().sum()/self.data[col].isna().count())
     
-    def process(self,name,func,processors,params,data):
+    def process(self,name,func,processors,params):
         if name in processors:
             if name in params.keys():
                 param=params[name]
             else:
                 param={}
-            p=func(data,self.label,parameters=param)
-            data,self.label=p.transform(data,self.label)
+            p=func(self.data,self.label,parameters=param)
+            self.data,self.label=p.transform(self.data,self.label)
             self.ps.append(p)
 
     def preprocess(self,processors=["naColFilter","fillNa","custom","tsToNum","catToNum","numToCat","variationSelector","entropySelector","mutInfoSelector","correlationSelector","normalization","normalizeFilter"],params={}):
@@ -144,32 +141,35 @@ class convergencerRegressionData:
                 }
         }   
         '''
-        data=self.X_train.append(self.X_test)
-        self.process("naColFilter",naColFilter,processors,params,data)
-        self.process("fillNa",fillNa,processors,params,data)
-        self.process("custom",custom,processors,params,data)
-        self.process("tsToNum",tsToNum,processors,params,data)
-        self.process("catToNum",catToNum,processors,params,data)
-        self.process("numToCat",numToCat,processors,params,data)
-        self.process("variationSelector",variationSelector,processors,params,data)
-        self.process("entropySelector",entropySelector,processors,params,data)
-        self.process("mutInfoSelector",mutInfoSelector,processors,params,data)
-        self.process("correlationSelector",correlationSelector,processors,params,data)
-        self.process("normalization",normalization,processors,params,data)
+        self.process("naColFilter",naColFilter,processors,params)
+        self.process("fillNa",fillNa,processors,params)
+        self.process("custom",custom,processors,params)
+        self.process("tsToNum",tsToNum,processors,params)
+        self.process("catToNum",catToNum,processors,params)
+        self.process("numToCat",numToCat,processors,params)
+        self.process("variationSelector",variationSelector,processors,params)
+        self.process("entropySelector",entropySelector,processors,params)
+        self.process("mutInfoSelector",mutInfoSelector,processors,params)
+        self.process("correlationSelector",correlationSelector,processors,params)
+        self.process("normalization",normalization,processors,params)
         if "normalizeFilter" in processors:
             if "normalizeFilter" in params.keys():
                 param=params["normalizeFilter"]
             else:
                 param={}
-            p=normalizeFilter(self.X_train,self.label,parameters=param)
-            self.X_train,self.label=p.transform(self.X_train,self.label)
+            X=self.data.iloc[:self.trainNum]
+            test=self.data.iloc[self.trainNum:]
+            p=normalizeFilter(X,self.label,parameters=param)
+            X,self.label=p.transform(X,self.label)
+            self.trainNum=X.shape[0]
+            self.data=X.append(test)
         self.preprocessed=True
 
     def getXtrain(self):
-        return self.X_train
+        return self.data.iloc[:self.trainNum]
     
     def getXtest(self):
-        return self.X_test
+        return self.data.iloc[self.trainNum:]
     
     def gety(self):
         return self.label
@@ -179,7 +179,6 @@ class convergencerRegressionData:
             if str(p)=="normalization":
                 _,label=p.reTransform(None,label)
                 return label
-
 
 '''
 def regressionParaSearch(data,models=["linear","ridge","lasso","elasticNet","SVMRegression","dtRegression","rfRegression","gbRegression","xgbRegression","lgbmRegression","lgbmRegression_goss","catBoostRegression"],
