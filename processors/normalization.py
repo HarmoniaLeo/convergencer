@@ -1,50 +1,81 @@
-from base import base
+from processors.base import base
 import numpy as np
+import pandas as pd
 from scipy import stats
+from scipy.special import inv_boxcox
+from utils.processing import normalTest
 
 class normalization(base):
-    def __init__(self, parameters):
-        self.normalizeCols=self.getParameter("cols",None,parameters)
-        self.normalizeDict={}
-
-    def fit(self,data):
-        if self.normalizeCols is None:
+    def __init__(self, data, y=None, parameters={},verbose=1):
+        '''
+        parameter:
+            {
+                "cols": cols to be turned to normal distribution. Default=None for all number cols. 
+            }
+        '''
+        self.verbose=verbose
+        cols=self.getParameter("cols",None,parameters)
+        self.l=None
+        self.cols=[]
+        if cols is None:
             ttn = data.select_dtypes(include=[np.number])
-            columns=ttn.columns
-        elif type(self.normalizeCols)==list:
-            columns=self.normalizeCols
-        if len(columns)!=0:
-            print("Try to normalize numerical values. ")
-            for col in columns:
-                self.normalizeDict[col]=0
-                p=stats.kstest(data[col], 'norm', (data[col].mean(), data[col].std())).pvalue()
-                i=0
-                while p<0.05:
-                    if i>=2:
-                        break
-                    print("Col "+str(col)+"failed to pass k-s test with p-value={0}. Try to normalize it. ".format(p))
-                    if data[col].skew()>0:
-                        data[col]=np.log1p(data[col])
-                        self.normalizeDict[col]-=1
-                    else:
-                        data[col]=np.exmp1(data[col])
-                        self.normalizeDIct[col]+=1
-                    p=stats.kstest(data[col], 'norm', (data[col].mean(), data[col].std())).pvalue()
-                    i+=1
-                else:
-                    print("Col "+str(col)+" passed k-s test with p-value={0}".format(p))
-        return data
+            cols=ttn.columns
+        _,cols=normalTest(data,cols)
+        for col in cols:
+            t, l = stats.boxcox(data[col]+1, lmbda=None, alpha=None)
+            target=pd.Series(t,index=data.index)
+            if normalTest(target,threshold=0.03):
+                self.cols.append(col)
+        if not (y is None):
+            if not normalTest(y):
+                t, l = stats.boxcox(y+1, lmbda=None, alpha=None)
+                target=pd.Series(t,index=y.index)
+                if normalTest(target,threshold=0.03):
+                    self.l=l
+
+    def transform(self, data, y=None):
+        '''
+        params:
+            data: the data to transform
+        return:
+            data whose number cols are turned to normal distribution
+        '''
+        print("\n-------------------------Try to normalize cols-------------------------")
+        data=data.copy()
+        for col in self.cols:
+            if self.verbose==1:
+                print("Try to normalize col: ",col)
+            t, l = stats.boxcox(data[col]+1, lmbda=None, alpha=None)
+            target=pd.Series(t,index=data.index)
+            if self.verbose==1:
+                print("Skew is {0} now. ".format(target.skew()))
+            data[col]=target
+        if not (y is None):
+            if not (self.l is None):
+                if self.verbose==1:
+                    print("Try to normalize label")
+                t, l = stats.boxcox(y+1, lmbda=None, alpha=None)
+                y=pd.Series(t,index=y.index)
+                if self.verbose==1:
+                    print("Skew is {0} now. ".format(y.skew()))
+        return super().transform(data, y=y)
     
-    def transform(self, data):
-        print("Try to normalize numerical values. ")
-        for col in self.normalizeDict.keys():
-            if self.normalizeDict[col]>0:
-                for i in range(self.normalizeDict[col]):
-                    data[col]=np.exmp1(data[col])
-            elif self.normalizeDict[col]<0:
-                for i in range(-self.normalizeDict[col]):
-                    data[col]=np.log1p(data[col])
-        return data
-    
+    def reTransform(self,data, y=None):
+        '''
+        params:
+            target: label to re-transform
+        return:
+            original label
+        '''
+        if not (y is None):
+            if not (self.l is None):
+                if self.verbose==1:
+                    print("\n-------------------------Try to de-normalize label-------------------------")
+                t=inv_boxcox(y, self.l)-1
+                data=pd.Series(t,index=y.index)
+                if self.verbose==1:
+                    print("Skew is {0} now. ".format(data.skew()))
+        return super().reTransform(data, y=y)
+
     def __str__(self):
         return "normalization"

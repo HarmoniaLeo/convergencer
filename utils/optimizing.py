@@ -3,14 +3,69 @@ import random
 from bayes_opt import BayesianOptimization,UtilityFunction
 
 class bayesianOpt:
-    def __init__(self,pbounds):
-        self.optimizer=BayesianOptimization(f=None,pbounds=pbounds,verbose=2,random_state=1)
+    def __init__(self,pbounds,initParams):
+        tbounds={}
+        self.floatToObject={}
+        self.takeInt=[]
+        self.takeExp=[]
+        for key in pbounds.keys():
+            if pbounds[key][0]==object:
+                self.floatToObject[key]=[]
+                for i in range(1,len(pbounds[key])):
+                    self.floatToObject[key].append(pbounds[key][i])
+                tbounds[key]=(0,len(self.floatToObject[key])-1e-5)
+            else:
+                if pbounds[key][0]==int:
+                    self.takeInt.append(key)
+                if pbounds[key][1]=="exp":
+                    self.takeExp.append(key)
+                    tbounds[key]=(np.log(pbounds[key][2]+1e-16),np.log(pbounds[key][3]))
+                else:
+                    tbounds[key]=(float(pbounds[key][2]),float(pbounds[key][3]))
+        self.optimizer=BayesianOptimization(f=None,pbounds=tbounds,verbose=2,random_state=1)
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
+        self.params={}
+        self.outer2inner(initParams)
 
-    def next(self,params,target):
-        self.optimizer.register(params=params,target=target)
-        return self.optimizer.suggest(self.utility)
+    def inner2outer(self):
+        params={}
+        for key in self.params.keys():
+            if key in self.floatToObject.keys():
+                params[key]=self.floatToObject[key][int(self.params[key])]
+            else:
+                if (key in self.takeExp) and (key in self.takeInt):
+                    params[key]=int(np.exp(self.params[key]))
+                elif (key in self.takeExp) and (key not in self.takeInt):
+                    params[key]=round(np.exp(self.params[key]),16)
+                elif (key not in self.takeExp) and (key in self.takeInt):
+                    params[key]=int(self.params[key])
+                else:
+                    params[key]=round(self.params[key],16)
+        return params
 
+    def outer2inner(self,params):
+        for key in params.keys():
+            if key in self.floatToObject.keys():
+                for i in range(0,len(self.floatToObject[key])):
+                    if self.floatToObject[key][i]==params[key]:
+                        self.params[key]=float(i)
+            elif key in self.takeExp:
+                self.params[key]=np.log(params[key])
+            else:
+                self.params[key]=float(params[key])
+
+    def next(self,target,ifMax,params=None):
+        if not params is None:
+            self.params=params
+        if not ifMax:
+            target=-target
+        try:
+            self.optimizer.register(params=self.params,target=target)
+        except Exception:
+            self.params=self.optimizer.suggest(self.utility)
+            return self.inner2outer()
+        self.params=self.optimizer.suggest(self.utility)
+        return self.inner2outer()
 
 
 def finetune(X,y,models,maxEpoch,accThr,maxModelNum,bestModels=[],bestTrainAccs=[],bestTestAccs=[],checkPointPath=None):

@@ -1,20 +1,13 @@
-from utils.io import saveModel
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 import numpy as np
-from base import base
+from models.base import base
 
 class baggingModel:
     def __init__(self,models,weights):
         self.models=models
         self.weights=weights
-    
+
     def fit(self,X,y):
-        return self
-    
-    def score(self,X,y):
-        predict=self.predict(X)
-        return accuracy_score(y,predict)
+        return None
 
     def predict(self,X):
         predicts=[]
@@ -22,33 +15,34 @@ class baggingModel:
             predict=model.inference(X)
             predicts.append(predict)
         predicts=np.array(predicts).T
-        predicts=self.weights*predicts
+        predicts=self.weights/np.sum(self.weights)*predicts
         predicts=np.sum(predicts,axis=1)
         return predicts
 
-class bagging(base):
-    def __init__(self,parameters={},models=None):
-        if models is None:
-            self.models=[]
-            for key in parameters["models"]:
 
-            super.__init__(parameters)
-        else:
-            self.models=models
-            modelDict={}
-            for model in models:
-                modelDict[str(model)]=model.parameters
-            super().__init__({"weights":1/len(models),"models":modelDict})
-        self.paraLength=len(self.models)
+class baggingRegression(base):
+    def __init__(self,X,y,models=[],parameters={},metric="r2",maxEpoch=1000,modelLoadPath=None,modelSavePath=None,modelSaveFreq=50,historyLoadPath=None,historySavePath=None,historySaveFreq=50,verbose=1):
+        self.baggingModels=models
+        super().__init__(X=X, y=y, parameters=parameters, metric=metric, maxEpoch=maxEpoch,modelLoadPath=modelLoadPath,modelSavePath=modelSavePath,modelSaveFreq=modelSaveFreq,historyLoadPath=historyLoadPath,historySavePath=historySavePath,historySaveFreq=historySaveFreq,verbose=verbose)
 
-    def getParameters(self, parameter):
-        weights=parameter/np.sum(parameter)
-        parameter=self.parameters
-        parameter["weights"]=weights
-        return parameter
+    def initParameter(self, X, y, parameters):
+        for model in self.baggingModels:
+            self.setParameter(str(model),1,parameters)
+        return super().initParameter(X, y, parameters)
 
-    def getModel(self, parameter):
-        return baggingModel(self.models,parameter["weights"])
+    def getParameterRange(self,X,y,parameters={}):
+        for model in self.baggingModels:
+            self.setParameter(str(model),(float,"uni",1e-6,1.0),parameters)
+        return super().getParameterRange(X, y, parameters=parameters)
+    
+    def getModel(self,X,y,parameters,modelPath,metric):
+        weights=[]
+        for model in self.baggingModels:
+            weights.append(parameters[str(model)])
+        return baggingModel(self.baggingModels,weights)
+
+    def saveModel(self,path):
+        return None
 
     def __str__(self):
-        return "BaggingModel"
+        return "bagging"

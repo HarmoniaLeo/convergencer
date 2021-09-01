@@ -1,10 +1,12 @@
 import xgboost as xgb
-from base import base
+from models.base import base
 import multiprocessing
 import numpy as np
 import torch
 from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
 from utils.metrics import mape,mspe
+from processors import catToIntPdCat
+import pandas as pd
 
 def fr2(preds, xgtrain):
     label = xgtrain.get_label()
@@ -37,51 +39,54 @@ def fmspe(preds, xgtrain):
     return 'mspe',score
 
 class xgbRegression(base):
-    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
-        mst=np.sum(np.power(y-np.mean(y),2))/len(y)
+    def initParameter(self, X, y, parameters):
+        #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         self.setParameter("num_boost_round",300,parameters)
         self.setParameter("eta",0.3,parameters)
-        self.setParameter("gamma",0.001*mst,parameters)
-        self.setParameter("min_child_weight",X.shape[0]*0.0001,parameters)
+        #self.setParameter("gamma",0.001*mst,parameters)
+        self.setParameter("min_child_weight",np.log2(X.shape[0]),parameters)
         self.setParameter("max_depth",8,parameters)
         self.setParameter("subsample",0.5,parameters)
         self.setParameter("colsample_bytree",1.0,parameters)
         self.setParameter("colsample_bylevel",1.0,parameters)
-        self.setParameter("alpha",1.0,parameters)
-        self.setParameter("lambda",1.0,parameters)
-        self.setParameter("early_stopping_round",10,parameters)
-        super().__init__(X, y, parameters=parameters,metric=metric, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
-
+        #self.setParameter("alpha",0.0001,parameters)
+        #self.setParameter("lambda",1.0,parameters)
+        self.setParameter("early_stopping_round",0.05,parameters)
+        return super().initParameter(X, y, parameters)
+        
     def getParameterRange(self, X, y, parameters={}):
-        mst=np.sum(np.power(y-np.mean(y),2))/len(y)
-        self.setParameter("num_boost_round",(object,100,300,500,650,800),parameters)
-        self.setParameter("eta",(float,"exp",0.0,1.0),parameters)
-        self.setParameter("gamma",(float,"exp",0.0,0.01*mst),parameters)
-        self.setParameter("min_child_weight",(float,"exp",0.0,X.shape[0]*0.0001),parameters)
-        self.setParameter("max_depth",(int,"uni",1,10),parameters)
+        #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
+        self.setParameter("num_boost_round",(int,"uni",100,1000),parameters)
+        self.setParameter("eta",(float,"exp",0.001,1.0),parameters)
+        #self.setParameter("gamma",(float,"exp",0.0,0.01*mst),parameters)
+        self.setParameter("min_child_weight",(float,"uni",0.0,10.0*np.log2(X.shape[0])),parameters)
+        self.setParameter("max_depth",(int,"uni",1,100),parameters)
         self.setParameter("subsample",(float,"uni",0.5,1.0),parameters)
         self.setParameter("colsample_bytree",(float,"uni",0.5,1.0),parameters)
         self.setParameter("colsample_bylevel",(float,"uni",0.5,1.0),parameters)
-        self.setParameter("alpha",(float,"exp",0.0,1.0),parameters)
-        self.setParameter("lambda",(float,"exp",0.0,1.0),parameters)
-        self.setParameter("early_stopping_round",(object,5,10,15),parameters)
+        #self.setParameter("alpha",(float,"exp",0.0001,10.0),parameters)
+        #self.setParameter("lambda",(float,"exp",0.0001,10.0),parameters)
+        self.setParameter("early_stopping_round",(float,"uni",0.02,0.1),parameters)
         return super().getParameterRange(X, y, parameters=parameters)
     
+    def getProcessors(self,X,y):
+        return [catToIntPdCat(X,verbose=0)]
+
     def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return None
-        model = xgb.Booster()
+        model = xgb.Booster({"tree_method":"auto","nthread":multiprocessing.cpu_count()})
         model.load_model(modelPath)
         return model
 
     def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
-        xgtrain = xgb.DMatrix(X_train, label=y_train)
-        xgtest = xgb.DMatrix(X_test, label=y_test)
+        xgtrain = xgb.DMatrix(X_train, label=y_train,enable_categorical=True)
+        xgtest = xgb.DMatrix(X_test, label=y_test,enable_categorical=True)
         watchlist = [(xgtrain, 'train'),(xgtest, 'val')]
         parameters=parameters.copy()
         num_rounds=parameters.pop("num_boost_round")
-        early_stop=parameters.pop("early_stopping_round")
-        if(torch.cuda.is_available()):self.setParameter("tree_method","gpu",parameters)
+        early_stop=int(parameters.pop("early_stopping_round")*num_rounds)
+        self.setParameter("tree_method","auto",parameters)
         self.setParameter("nthread",multiprocessing.cpu_count(),parameters)
         if metric=="r2":
             score=fr2
@@ -101,8 +106,12 @@ class xgbRegression(base):
         elif metric=="mspe":
             score=fmspe
             maximize=False
-        return xgb.train(parameters, xgtrain, num_rounds, watchlist,early_stopping_rounds=early_stop,feval=score,maximize=maximize)
-        
+        return xgb.train(parameters, xgtrain, num_rounds, watchlist,early_stopping_rounds=early_stop,feval=score,maximize=maximize,verbose_eval=False)
+    
+    def modelPredict(self, model, X):
+        X = xgb.DMatrix(X,enable_categorical=True)
+        return pd.Series(model.predict(X,iteration_range=(0, model.best_iteration)))
+
     def saveModel(self, path):
         print("Save model as: ",path)
         self.model.save_model(path)
@@ -111,11 +120,11 @@ class xgbRegression(base):
         return "xgbRegression"
 
 class xgbRegression_dart(xgbRegression):
-    def __init__(self,X=None,y=None,parameters={},metric="r2",maxEpoch=1000,checkPointPath=None,checkPointFreq=50):
+    def initParameter(self, X, y, parameters):
         self.setParameter("rate_drop",0.0,parameters)
         self.setParameter("skip_drop",0.0,parameters)
-        super().__init__(X, y, parameters=parameters,metric=metric, maxEpoch=maxEpoch, checkPointPath=checkPointPath, checkPointFreq=checkPointFreq)
-
+        return super().initParameter(X, y, parameters)
+   
     def getParameterRange(self, X, y, parameters={}):
         self.setParameter("rate_drop",(float,"uni",0.0,0.5),parameters)
         self.setParameter("skip_drop",(float,"uni",0.0,0.5),parameters)
