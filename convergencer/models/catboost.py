@@ -109,9 +109,9 @@ class catBoostRegression(base):
         model.fit(train_pool,eval_set=test_pool,logging_level="Silent",use_best_model=True)
         return model
 
-    def modelPredict(self, model, X):
+    def modelPredict(self, model, X,index):
         X=Pool(X,cat_features=self.categorical_feature)
-        return super().modelPredict(model, X)
+        return super().modelPredict(model, X,index)
     
     def saveModel(self, path):
         self.model.save_model(path)

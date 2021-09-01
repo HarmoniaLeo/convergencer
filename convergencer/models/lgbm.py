@@ -114,8 +114,8 @@ class lgbmRegressionBase(base):
         print("Save model as: ",path)
         self.model.save_model(path,num_iteration=self.model.best_iteration)
     
-    def modelPredict(self, model, X):
-        return pd.Series(model.predict(X,num_iteration=model.best_iteration),index=X.index)
+    def modelPredict(self, model, X,index):
+        return pd.Series(model.predict(X,num_iteration=model.best_iteration),index=index)
     
 class lgbmRegression(lgbmRegressionBase):
     def initParameter(self, X, y, parameters):
