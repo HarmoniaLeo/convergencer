@@ -108,9 +108,9 @@ class xgbRegression(base):
             maximize=False
         return xgb.train(parameters, xgtrain, num_rounds, watchlist,early_stopping_rounds=early_stop,feval=score,maximize=maximize,verbose_eval=False)
     
-    def modelPredict(self, model, X,index):
+    def modelPredict(self, model, X):
         data = xgb.DMatrix(X,enable_categorical=True)
-        return pd.Series(model.predict(data,iteration_range=(0, model.best_iteration)),index=index)
+        return pd.Series(model.predict(data,iteration_range=(0, model.best_iteration)),index=X.index)
 
     def saveModel(self, path):
         print("Save model as: ",path)

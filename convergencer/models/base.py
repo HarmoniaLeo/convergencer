@@ -107,8 +107,8 @@ class base:
         model.fit(X_train,y_train)
         return model
 
-    def modelPredict(self,model,X,index):
-        return pd.Series(model.predict(X),index=index)
+    def modelPredict(self,model,X):
+        return pd.Series(model.predict(X),X.index)
 
     def trainModel(self,X,y,parameters,metric):
         kf = KFold(n_splits=10,shuffle=True)
@@ -140,8 +140,8 @@ class base:
             y_test=y.iloc[test_index]
             model=self.getModel(X,y,parameters,None,metric)
             model=self.fitModel(X_train,y_train,X_test,y_test,model,parameters,metric)
-            y_train_pred=self.modelPredict(model,X_train,X_train.index)
-            y_test_pred=self.modelPredict(model,X_test,X_train.index)
+            y_train_pred=self.modelPredict(model,X_train)
+            y_test_pred=self.modelPredict(model,X_test)
             
             trainAccs.append(score(y_train,y_train_pred))
             testAccs.append(score(y_test,y_test_pred))
@@ -157,7 +157,7 @@ class base:
 
     def inference(self,X):
         data=self.preprocess(X)
-        return self.modelPredict(self.model,data,X.index)
+        return self.modelPredict(self.model,data)
 
     def saveModel(self,path):
         print("Save model as: ",path)

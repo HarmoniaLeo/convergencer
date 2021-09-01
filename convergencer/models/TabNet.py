@@ -112,8 +112,8 @@ class TabNetRegression(base):
             )
         return model
     
-    def modelPredict(self, model, X,index):
-        return pd.Series(model.predict(X.values).T[0],index=index)
+    def modelPredict(self, model, X):
+        return pd.Series(model.predict(X.values).T[0],index=X.index)
 
     def trainModel(self,X,y,parameters,metric):
         if metric=="r2":
@@ -133,8 +133,8 @@ class TabNetRegression(base):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         model=self.getModel(X,y,parameters,None,metric)
         model=self.fitModel(X_train,y_train,X_test,y_test,model,parameters,metric)
-        y_train_pred=self.modelPredict(model,X_train,X_train.index)
-        y_test_pred=self.modelPredict(model,X_test,X_train.index)
+        y_train_pred=self.modelPredict(model,X_train)
+        y_test_pred=self.modelPredict(model,X_test)
         return model,score(y_train,y_train_pred),score(y_test,y_test_pred)
 
     def getProcessors(self,X,y):

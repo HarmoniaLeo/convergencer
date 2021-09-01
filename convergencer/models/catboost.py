@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from convergencer.utils.metrics import mspe
 from sklearn.model_selection import KFold
+import pandas as pd
 
 class fmse(object):
     def get_final_error(self, error, weight):
@@ -93,13 +94,13 @@ class catBoostRegression(base):
             elif metric=="mspe":
                 score=fmspe
             parameters=parameters.copy()
-            if(torch.cuda.is_available()):self.setParameter("task_type","gpu",parameters)
+            if(torch.cuda.is_available()):self.setParameter("task_type","GPU",parameters)
             self.setParameter("thread_count",multiprocessing.cpu_count(),parameters)
             parameters["eval_metric"]=score
             parameters["allow_writing_files"]=False
             return CatBoostRegressor(**parameters)
         else:
-            model = CatBoostRegressor(task_type="gpu" if torch.cuda.is_available() else "cpu",thread_count=multiprocessing.cpu_count(),allow_writing_files=False)
+            model = CatBoostRegressor(task_type="GPU" if torch.cuda.is_available() else "CPU",thread_count=multiprocessing.cpu_count(),allow_writing_files=False)
             model.load_model(modelPath)
             return model
     
@@ -109,9 +110,9 @@ class catBoostRegression(base):
         model.fit(train_pool,eval_set=test_pool,logging_level="Silent",use_best_model=True)
         return model
 
-    def modelPredict(self, model, X,index):
-        X=Pool(X,cat_features=self.categorical_feature)
-        return super().modelPredict(model, X,index)
+    def modelPredict(self, model, X):
+        data=Pool(X,cat_features=self.categorical_feature)
+        return pd.Series(model.predict(data),X.index)
     
     def saveModel(self, path):
         self.model.save_model(path)
