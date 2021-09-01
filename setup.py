@@ -1,7 +1,7 @@
 from setuptools import setup
  
 setup(name='convergencer',
-      version="0.1.8",
+      version="0.1.10",
       description='Data science workflow of automatic data reading, preprocessing, model selection, model integration, model parameter adjustment and effect evaluation.',
       author='HarmoniaLeo',
       author_email='1532282692@qq.com',

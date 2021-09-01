@@ -63,7 +63,7 @@ class lgbmRegressionBase(base):
         #self.setParameter("min_data_in_leaf",(int,"uni",1,int(10.0*np.log2(X.shape[0]))),parameters)
         self.setParameter("num_leaves",(int,"uni",10,100),parameters)
         self.setParameter("max_depth",(int,"uni",1,10),parameters)
-        self.setParameter("max_bin",(object,32,64,128,256,512),parameters)
+        self.setParameter("max_bin",(object,32,64,128,255,512),parameters)
         self.setParameter("feature_fraction",(float,"uni",0.5,1.0),parameters)
         #self.setParameter("lambda_l1",(float,"exp",0.0001,10.0),parameters)
         #self.setParameter("lambda_l2",(float,"uni",0.0001,10.0),parameters)
@@ -83,13 +83,12 @@ class lgbmRegressionBase(base):
     def getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return None
-        return lgb.Booster(model_file=modelPath,silent=True,params={"verbose":-1,"device":"gpu" if torch.cuda.is_available() else "cpu"})
+        return lgb.Booster(model_file=modelPath,silent=True,params={"verbose":-1})
     
     def fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
         parameters=parameters.copy()
         rounds=parameters.pop("num")
         es=int(parameters.pop("early_stopping_round")*rounds)
-        if(torch.cuda.is_available()):self.setParameter("device","gpu",parameters)
         self.setParameter("boosting","gbdt",parameters)
         self.setParameter("verbose",-1,parameters)
         train_data=lgb.Dataset(X_train,y_train,params=parameters,free_raw_data=False,feature_name=self.feature_name,categorical_feature=self.categorical_feature)

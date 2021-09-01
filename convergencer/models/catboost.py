@@ -50,7 +50,7 @@ class catBoostRegression(base):
         self.setParameter("iterations",1000,parameters)
         self.setParameter("learning_rate",0.3,parameters)
         self.setParameter("depth",8,parameters)
-        self.setParameter("max_bin",256,parameters)
+        self.setParameter("max_bin",128,parameters)
         self.setParameter("bagging_temperature",1.0,parameters)
         self.setParameter("random_strength",1.0,parameters)
         self.setParameter("rsm",1.0,parameters)
@@ -62,7 +62,7 @@ class catBoostRegression(base):
         self.setParameter("iterations",(int,"exp",100,20000),parameters)
         self.setParameter("learning_rate",(float,"exp",0.001,1.0),parameters)
         self.setParameter("depth",(int,"uni",1,10),parameters)
-        self.setParameter("max_bin",(object,32,64,128,256,512),parameters)
+        self.setParameter("max_bin",(object,32,64,128,255,512),parameters)
         self.setParameter("bagging_temperature",(float,"uni",0.0,10.0),parameters)
         self.setParameter("random_strength",(float,"exp",0.0,1.0),parameters)
         self.setParameter("rsm",(float,"uni",0.5,1.0),parameters)
@@ -94,13 +94,12 @@ class catBoostRegression(base):
             elif metric=="mspe":
                 score=fmspe
             parameters=parameters.copy()
-            if(torch.cuda.is_available()):self.setParameter("task_type","GPU",parameters)
             self.setParameter("thread_count",multiprocessing.cpu_count(),parameters)
             parameters["eval_metric"]=score
             parameters["allow_writing_files"]=False
             return CatBoostRegressor(**parameters)
         else:
-            model = CatBoostRegressor(task_type="GPU" if torch.cuda.is_available() else "CPU",thread_count=multiprocessing.cpu_count(),allow_writing_files=False)
+            model = CatBoostRegressor(thread_count=multiprocessing.cpu_count(),allow_writing_files=False)
             model.load_model(modelPath)
             return model
     
