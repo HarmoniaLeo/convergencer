@@ -1,14 +1,13 @@
-from processors.encoder import catToMean
 from pytorch_tabnet.tab_model import TabNetRegressor
-from models.base import base
+from convergencer.models import base
 import multiprocessing
 import numpy as np
 import pandas as pd
 from pytorch_tabnet.metrics import Metric
 from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
-from utils.metrics import mape,mspe
+from convergencer.utils.metrics import mape,mspe
 from sklearn.model_selection import train_test_split
-from processors import normalizeScaler,catToMean
+from convergencer.processors import normalizeScaler,catToMean
 
 class fr2(Metric):
     def __init__(self):

@@ -1,5 +1,5 @@
 import numpy as np
-from models.base import base
+from convergencer.models import base
 
 class baggingModel:
     def __init__(self,models,weights):

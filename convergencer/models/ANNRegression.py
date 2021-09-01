@@ -4,9 +4,9 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import callbacks
 import tensorflow as tf
-from models.base import base
+from convergencer.models import base
 import tensorflow.keras.backend as K
-from processors import normalizeScaler,catToMean
+from convergencer.processors import normalizeScaler,catToMean
 
 def fr2(y_true, y_pred):
     st=K.sum(K.square(y_true-K.mean(y_true)))

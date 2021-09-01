@@ -1,9 +1,9 @@
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor,GradientBoostingRegressor
-from models.base import base
+from convergencer.models import base
 import multiprocessing
 import numpy as np
-from processors import catToInt
+from convergencer.processors import catToInt
 import math
 
 class dtRegression(base):

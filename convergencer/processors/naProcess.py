@@ -1,4 +1,4 @@
-from processors.base import base
+from convergencer.processors.base import base
 from sklearn.neighbors import KNeighborsRegressor,KNeighborsClassifier
 import numpy as np
 import pandas as pd

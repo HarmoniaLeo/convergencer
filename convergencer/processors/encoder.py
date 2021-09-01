@@ -1,5 +1,5 @@
-from processors.base import base
-from processors.naProcess import fillNa
+from convergencer.processors.base import base
+from convergencer.processors.naProcess import fillNa
 import pandas as pd
 import numpy as np
 

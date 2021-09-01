@@ -1,4 +1,4 @@
-from processors.base import base
+from convergencer.processors.base import base
 import numpy as np
 
 class normalizeScaler(base):

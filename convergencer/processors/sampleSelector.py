@@ -1,6 +1,6 @@
-from processors.base import base
+from convergencer.processors.base import base
 import numpy as np
-from utils.processing import normalTest
+from convergencer.utils.processing import normalTest
 
 class normalizeFilter(base):
     def __init__(self, data, y=None, parameters={},verbose=1):

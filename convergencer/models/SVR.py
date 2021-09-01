@@ -1,7 +1,7 @@
 from sklearn import metrics
 from sklearn.svm import SVR
-from models.base import base
-from processors import catToInt,normalizeScaler,catToMean
+from convergencer.models import base
+from convergencer.processors import catToInt,normalizeScaler,catToMean
 
 class SVMRegression(base):
     def initParameter(self, X, y, parameters):

@@ -1,6 +1,6 @@
-from utils.io import readData,readLabel
+from convergencer.utils.io import readData,readLabel
 import numpy as np
-from processors import naColFilter,fillNa,custom,tsToNum,catToNum,numToCat,variationSelector,entropySelector,mutInfoSelector,correlationSelector,normalization,normalizeFilter
+from convergencer.processors import naColFilter,fillNa,custom,tsToNum,catToNum,numToCat,variationSelector,entropySelector,mutInfoSelector,correlationSelector,normalization,normalizeFilter
 #from models import linear,ridge,lasso,elasticNet,SVMRegression,dtRegression,rfRegression,gbRegression,xgbRegression,lgbmRegression,lgbmRegression_goss,catBoostRegression
 
 class convergencerRegressionData:

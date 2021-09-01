@@ -1,8 +1,6 @@
-from operator import mod
-from processors.encoder import catToMean
-from models.base import base
+from convergencer.models import base
 from sklearn.linear_model import Ridge,Lasso,ElasticNet,LinearRegression
-from processors import catToMean
+from convergencer.processors import catToMean
 import numpy as np
 
 class linear(base):

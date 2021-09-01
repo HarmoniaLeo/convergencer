@@ -1,4 +1,4 @@
-from processors.base import base
+from convergencer.processors.base import base
 from sklearn.decomposition import PCA
 import pandas as pd
 

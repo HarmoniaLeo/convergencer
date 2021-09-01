@@ -1,4 +1,4 @@
-from processors.base import base
+from convergencer.processors.base import base
 
 class custom(base):
     def __init__(self, data, y=None, parameters={},verbose=1):

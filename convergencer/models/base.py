@@ -1,11 +1,11 @@
-from utils.optimizing import bayesianOpt
+from convergencer.utils.optimizing import bayesianOpt
 from sklearn.model_selection import KFold
 import numpy as np
 import pandas as pd
 from joblib import dump, load
-from utils.io import saveDict,readDict
+from convergencer.utils.io import saveDict,readDict
 from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
-from utils.metrics import mape,mspe
+from convergencer.utils.metrics import mape,mspe
 import os
 from tqdm import tqdm
 

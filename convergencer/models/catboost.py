@@ -1,11 +1,11 @@
-from processors.encoder import catToPdCat
+from convergencer.processors import catToPdCat
 from catboost import CatBoostRegressor,Pool
-from models.base import base
+from convergencer.models import base
 import multiprocessing
 import torch
 import numpy as np
 from sklearn.metrics import mean_squared_error
-from utils.metrics import mspe
+from convergencer.utils.metrics import mspe
 from sklearn.model_selection import KFold
 
 class fmse(object):

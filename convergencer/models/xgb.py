@@ -1,11 +1,11 @@
 import xgboost as xgb
-from models.base import base
+from convergencer.models import base
 import multiprocessing
 import numpy as np
 import torch
 from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
-from utils.metrics import mape,mspe
-from processors import catToIntPdCat
+from convergencer.utils.metrics import mape,mspe
+from convergencer.processors import catToIntPdCat
 import pandas as pd
 
 def fr2(preds, xgtrain):

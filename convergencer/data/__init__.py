@@ -1,1 +1,1 @@
-from data.regression import convergencerRegressionData
+from convergencer.data.regression import convergencerRegressionData

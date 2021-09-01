@@ -1,9 +1,9 @@
-from processors.base import base
+from convergencer.processors.base import base
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.special import inv_boxcox
-from utils.processing import normalTest
+from convergencer.utils.processing import normalTest
 
 class normalization(base):
     def __init__(self, data, y=None, parameters={},verbose=1):

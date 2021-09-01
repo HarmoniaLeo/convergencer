@@ -1,13 +1,12 @@
-from processors.encoder import catToInt, catToIntPdCat
+from convergencer.processors import catToInt, catToIntPdCat
 import lightgbm as lgb
-from models.base import base
+from convergencer.models import base
 import numpy as np
 import pandas as pd
 import math
 import torch
 from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error,mean_squared_log_error
-from utils.metrics import mape,mspe
-from processors import catToPdCat,catToIntPdCat
+from convergencer.utils.metrics import mape,mspe
 import warnings
 
 def fr2(preds, train_data):
