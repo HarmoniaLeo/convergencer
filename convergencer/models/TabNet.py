@@ -113,7 +113,7 @@ class TabNetRegression(base):
         return model
     
     def modelPredict(self, model, X):
-        return pd.Series(model.predict(X.values).T[0])
+        return pd.Series(model.predict(X.values).T[0],index=X.index)
 
     def trainModel(self,X,y,parameters,metric):
         if metric=="r2":

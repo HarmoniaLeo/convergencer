@@ -10,6 +10,7 @@ class convergencerRegressionData:
         test=readData(X_test,delimiter,id)
         self.trainNum=X.shape[0]
         self.data=X.append(test)
+        self.ps=[]
     
     def summary(self):
         print("All columns: ",self.data.columns)
@@ -31,6 +32,7 @@ class convergencerRegressionData:
                 param={}
             p=func(self.data,self.label,parameters=param)
             self.data,self.label=p.transform(self.data,self.label)
+            self.ps.append(p)
 
     def preprocess(self,processors=["naColFilter","fillNa","custom","tsToNum","catToNum","numToCat","variationSelector","entropySelector","mutInfoSelector","correlationSelector","normalization","normalizeFilter"],params={}):
         '''
@@ -171,6 +173,12 @@ class convergencerRegressionData:
     
     def gety(self):
         return self.label
+    
+    def reProcess(self,label):
+        for p in self.ps:
+            if str(p)=="normalization":
+                _,label=p.reTransform(None,label)
+                return label
 
 '''
 def regressionParaSearch(data,models=["linear","ridge","lasso","elasticNet","SVMRegression","dtRegression","rfRegression","gbRegression","xgbRegression","lgbmRegression","lgbmRegression_goss","catBoostRegression"],

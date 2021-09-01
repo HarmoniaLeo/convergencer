@@ -108,7 +108,7 @@ class base:
         return model
 
     def modelPredict(self,model,X):
-        return pd.Series(model.predict(X))
+        return pd.Series(model.predict(X),index=X.index)
 
     def trainModel(self,X,y,parameters,metric):
         kf = KFold(n_splits=10,shuffle=True)

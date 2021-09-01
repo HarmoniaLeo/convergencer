@@ -72,9 +72,9 @@ class normalization(base):
                 if self.verbose==1:
                     print("\n-------------------------Try to de-normalize label-------------------------")
                 t=inv_boxcox(y, self.l)-1
-                data=pd.Series(t,index=y.index)
+                y=pd.Series(t,index=y.index)
                 if self.verbose==1:
-                    print("Skew is {0} now. ".format(data.skew()))
+                    print("Skew is {0} now. ".format(y.skew()))
         return super().reTransform(data, y=y)
 
     def __str__(self):
