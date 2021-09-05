@@ -4,23 +4,24 @@ import pandas as pd
 import numpy as np
 
 class catToInt(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
-        self.verbose=verbose
+    def fit(self, data, y=None):
         ttn = data.select_dtypes(exclude=[np.number])
         self.uniques={}
         cols=ttn.columns
         for col in cols:
             self.uniques[col]=np.unique(data[col])  
+        return self
 
     def transform(self, data, y=None):
         data=data.copy()
         for col in self.uniques.keys():
             uniques=np.unique(data[col])
+            cat=data[col].dtype
             for uni in uniques:
                 if uni not in self.uniques[col]:
                     data[col]=np.where(data[col]==uni,np.nan,data[col])
-        p=fillNa(data,y,verbose=0)
-        data=p.transform(data)
+            data[col]=data[col].astype(cat)
+        data=fillNa().initialize({},verbose=0).fit(data,y).transform(data)
         for col in self.uniques.keys():
             uniques=np.unique(data[col])
             for uni in uniques:
@@ -53,8 +54,7 @@ class catToOneHot(catToInt):
         return "catToOneHot"
 
 class catToMean(base):
-    def __init__(self, data, y, parameters={},verbose=1):
-        self.verbose=verbose
+    def fit(self, data, y=None):
         ttn = data.select_dtypes(exclude=[np.number])
         self.uniques={}
         cols=ttn.columns
@@ -63,6 +63,7 @@ class catToMean(base):
             for uni in np.unique(data[col]):
                 self.uniques[col]["unis"].append(uni)
                 self.uniques[col]["values"].append(np.mean(y[data[col]==uni]))
+        return self
 
     def transform(self, data, y=None):
         data=data.copy()
@@ -71,7 +72,7 @@ class catToMean(base):
             for uni in uniques:
                 if uni not in self.uniques[col]["unis"]:
                     data[col]=np.where(data[col]==uni,np.nan,data[col])
-        p=fillNa(data,y,verbose=0)
+        p=fillNa().initialize({},verbose=0).fit(data,y)
         data=p.transform(data)
         for col in self.uniques.keys():
             for uni,value in zip(self.uniques[col]["unis"],self.uniques[col]["values"]):
@@ -86,36 +87,34 @@ class catToMean(base):
         return "catToMean"
 
 class catToPdCat(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
-        self.verbose=verbose
+    def fit(self, data, y=None):
         ttn = data.select_dtypes(exclude=[np.number])
         self.cols=ttn.columns
+        return self
     
     def transform(self, data, y=None):
         data=data.copy()
-        data[self.cols]=data[self.cols].astype("category")
+        if len(self.cols)>0:
+            data[self.cols]=data[self.cols].astype("category")
         return super().transform(data,y)
     
     def __str__(self):
         return "catToPdCat"
 
 class catToIntPdCat(catToPdCat):
-    def __init__(self, data, y=None, parameters={},verbose=1):
-        self.intEncoder=catToInt(data,verbose=0)
-        super().__init__(data, y=y, parameters=parameters)
+    def fit(self, data, y=None):
+        self.intEncoder=catToInt().initialize({},verbose=0).fit(data,y)
+        return super().fit(data, y=y)
 
     def transform(self, data, y=None):
         data=self.intEncoder.transform(data)
-        if y is None:
-            return data
-        else:
-            return data,y
+        return super().transform(data,y)
     
     def __str__(self):
         return "catToIntPdCat"
 
 class catToNum(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -145,12 +144,13 @@ class catToNum(base):
             }
         '''
         self.verbose=verbose
-        self.orders=self.getParameter("orders",{},parameters)
+        self.orders=self._getParameter("orders",{},parameters)
+        return self
 
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Encoding categorical data to specific numbers-------------------------")
-        data=data.copy()
         for key in self.orders.keys():
             if type(self.orders[key])==list:
                 for i in range(len(self.orders[key])):
@@ -174,7 +174,7 @@ class catToNum(base):
         return "catToNum"
 
 class numToCat(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -182,12 +182,13 @@ class numToCat(base):
             }
         '''
         self.verbose=verbose
-        self.cols=self.getParameter("cols",[],parameters)
+        self.cols=self._getParameter("cols",[],parameters)
+        return self
 
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Encoding specific numerical cols to categorical cols-------------------------")
-        data=data.copy()
         for col in self.cols:
             assert col in data.columns
             data[col]=data[col].astype("category")

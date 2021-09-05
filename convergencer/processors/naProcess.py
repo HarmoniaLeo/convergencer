@@ -5,7 +5,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 class fillNa(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters,verbose=1):
         '''
         parameters:
             {
@@ -34,12 +34,13 @@ class fillNa(base):
             }
         '''
         self.verbose=verbose
-        self.fillNaStrg=self.getParameter("strategy",{},parameters)
-        self.fillNaValue=self.getParameter("values",{},parameters)
+        self.fillNaStrg=self._getParameter("strategy",{},parameters)
+        self.fillNaValue=self._getParameter("values",{},parameters)
         for key in self.fillNaValue:
             self.fillNaStrg[key]="value"
-        self.fillNaK=self.getParameter("k",5,parameters)
-        self.fillNaKCols=self.getParameter("knn cols",{},parameters)
+        self.fillNaK=self._getParameter("k",5,parameters)
+        self.fillNaKCols=self._getParameter("knn cols",{},parameters)
+        return self
 
     def impute_knn(self,df,fillNaK,fillNaKCols):
         cols_nan = df.columns[df.isna().any()].tolist()         # columns w/ nan 
@@ -69,9 +70,9 @@ class fillNa(base):
         return df
 
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Try to fill nan values-------------------------")
-        data=data.copy()
         for key in data.columns:
             nanCount = data[key].isna().sum()
             if (nanCount>0) and (key in self.fillNaStrg.keys()):

@@ -76,11 +76,9 @@ def readLabel(data,label=-1,delimiter=",",labelId=None):
     return data,label
 
 def readDict(path):
-    print("Read parameters from "+path)
     with open(path, 'rb') as f:
         return pickle.load(f)
 
 def saveDict(parameters,path):
-    print("Save parameters to "+path)
     with open(path, 'wb') as f:
         pickle.dump(parameters, f, pickle.HIGHEST_PROTOCOL)

@@ -2,7 +2,7 @@ import pandas as pd
 from convergencer.processors.base import base
 
 class tsToNum(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -15,12 +15,13 @@ class tsToNum(base):
             }
         '''
         self.verbose=verbose
-        self.formats=self.getParameter("formats",{},parameters)
+        self.formats=self._getParameter("formats",{},parameters)
+        return self
 
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Try to extrate numerical features from time-stamps-------------------------")
-        data=data.copy()
         for key in self.formats.keys():
             s=pd.to_datetime(data[key],format=self.formats[key])
             data[str(key)+"_year"]=s.dt.year

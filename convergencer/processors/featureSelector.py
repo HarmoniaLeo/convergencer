@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn import metrics,preprocessing
 
 class singleSelector(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -16,19 +16,25 @@ class singleSelector(base):
             }
         '''
         self.verbose=verbose
-        threshold=self.getParameter("threshold",0.9,parameters)
-        cols=self.getParameter("cols",None,parameters)
-        if cols is None:
-            cols=self.getCols(data)
-        if len(cols)!=0:
-            self.fit(data,cols,threshold)
+        self.threshold=self._getParameter("threshold",0.9,parameters)
+        self.processCols=self._getParameter("cols",None,parameters)
+        return self
+    
+    def fit(self,data, y=None):
+        if self.processCols is None:
+            self.cols=self.getCols(data)
+        else:
+            self.cols=self.processCols
+        if len(self.cols)!=0:
+            self.fitting(data,self.cols,self.threshold)
         else:
             self.dropCols=[]
+        return self
 
     def getCols(self,data):
         return data.columns
     
-    def fit(self,data,cols,threshold):
+    def fitting(self,data,cols,threshold):
         vars = self.getTarget(data,cols)
         vars = vars.sort_values()
         vars = vars.cumsum()
@@ -38,6 +44,7 @@ class singleSelector(base):
         self.dropCols=cols
     
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Selcecting features with "+str(self)+"-------------------------")
             self.printMessage(self.dropCols)
@@ -46,9 +53,9 @@ class singleSelector(base):
     def __str__(self):
         return "singleSelector"
 
-class naColFilter(singleSelector):
+class naColSelector(singleSelector):
 
-    def fit(self,data,cols,threshold):
+    def fitting(self,data,cols,threshold):
         percent = (data[cols].isna().sum()/data[cols].isna().count()).sort_values(ascending=False)
         self.dropCols=percent[percent>=threshold].index
         
@@ -56,7 +63,7 @@ class naColFilter(singleSelector):
         print("Drop "+str(len(cols))+" cols since they high rate of nan values: ",cols)
     
     def __str__(self):
-        return "naColFilter"
+        return "naColSelector"
 
 class variationSelector(singleSelector):
     def getCols(self,data):
@@ -98,7 +105,7 @@ class entropySelector(singleSelector):
         return "entropySelector"
 
 class mutualSelector(singleSelector):
-    def fit(self,data,cols,threshold):
+    def fitting(self,data,cols,threshold):
         targetData=data[cols]
         targetData=self.getTarget(targetData)
         indexs=np.argwhere(targetData>threshold)

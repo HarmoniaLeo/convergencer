@@ -3,7 +3,7 @@ from sklearn.decomposition import PCA
 import pandas as pd
 
 class PCAReducer(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -11,12 +11,17 @@ class PCAReducer(base):
             }
         '''
         self.verbose=verbose
-        threshold=self.getParameter("threshold",0.9,parameters)
+        threshold=self._getParameter("threshold",0.9,parameters)
         self.transformer=PCA(threshold)
+        return self
+
+    def fit(self, data, y=None):
         self.transformer.fit(data)
+        return self
     
     def transform(self, data, y=None):
-        print("\n-------------------------Using PCA to transform data-------------------------")
+        if self.verbose==1:
+            print("\n-------------------------Using PCA to transform data-------------------------")
         res=self.transformer.transform(data)
         return super().transform(pd.DataFrame(res,index=data.index), y=y)
     

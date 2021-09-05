@@ -1,9 +1,10 @@
 from convergencer.processors.base import base
 import numpy as np
 from convergencer.utils.processing import normalTest
+from convergencer.processors import customFeatureEngineer
 
 class normalizeFilter(base):
-    def __init__(self, data, y=None, parameters={},verbose=1):
+    def initialize(self, parameters={},verbose=1):
         '''
         parameters:
             {
@@ -11,16 +12,23 @@ class normalizeFilter(base):
             }
         '''
         self.verbose=verbose
-        cols=self.getParameter("cols",None,parameters)
-        if cols is None:
+        self.processCols=self._getParameter("cols",None,parameters)
+        return self
+    
+    def fit(self, data, y=None):
+        if self.processCols is None:
             ttn = data.select_dtypes(include=[np.number])
             cols=ttn.columns
+        else:
+            cols=self.processCols
         self.filterCols,_=normalTest(data,cols)
         if len(self.filterCols)!=0:
             self.means=data[self.filterCols].mean()
             self.stds=data[self.filterCols].std()
+        return self
     
     def transform(self, data, y):
+        data=data.copy()
         if len(self.filterCols)!=0:
             if self.verbose==1:
                 print("\n-------------------------Try to filter data with normal distribution-------------------------")
@@ -39,6 +47,7 @@ class normalizeFilter(base):
 
 class naRowFilter(base):
     def transform(self, data, y=None):
+        data=data.copy()
         if self.verbose==1:
             print("\n-------------------------Try to drop rows with nan values-------------------------")
         data = data.dropna()
@@ -46,3 +55,7 @@ class naRowFilter(base):
     
     def __str__(self):
         return "naRowFilter"
+
+class customFilter(customFeatureEngineer):
+    def __str__(self):
+        return "customFilter"

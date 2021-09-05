@@ -1,16 +1,21 @@
 from convergencer.utils.io import readData,readLabel
 import numpy as np
-from convergencer.processors import naColFilter,fillNa,custom,tsToNum,catToNum,numToCat,variationSelector,entropySelector,mutInfoSelector,correlationSelector,normalization,normalizeFilter
-#from models import linear,ridge,lasso,elasticNet,SVMRegression,dtRegression,rfRegression,gbRegression,xgbRegression,lgbmRegression,lgbmRegression_goss,catBoostRegression
+from convergencer.processors import naColSelector,fillNa,customFeatureEngineer,tsToNum,catToNum,numToCat,variationSelector,entropySelector,mutInfoSelector,correlationSelector,normalization,normalizeFilter,customFilter
+from sklearn.model_selection import train_test_split
 
 class convergencerRegressionData:
-    def __init__(self,X_train,X_test,label=-1,id=None,labelId=None,delimiter=','):
+    def __init__(self,X_train,X_test=None,label=-1,id=None,labelId=None,delimiter=','):
         train=readData(X_train,delimiter,id)
         X,self.label=readLabel(train,label,delimiter,labelId)
-        test=readData(X_test,delimiter,id)
+        if not(X_test is None):
+            test=readData(X_test,delimiter,id)
+            self.data=X.append(test)
+        else:
+            self.data=X
         self.trainNum=X.shape[0]
-        self.data=X.append(test)
-        self.ps=[]
+        self.processors=[naColSelector(),fillNa(),customFeatureEngineer(),tsToNum(),catToNum(),numToCat(),variationSelector(),entropySelector(),mutInfoSelector(),correlationSelector(),normalization(),
+        normalizeFilter(),customFilter()]
+        self.processorsUsed=[]
     
     def summary(self):
         print("All columns: ",self.data.columns)
@@ -23,22 +28,13 @@ class convergencerRegressionData:
     
     def ifNan(self,col):
         print(self.data[col].isna().sum()/self.data[col].isna().count())
-    
-    def process(self,name,func,processors,params):
-        if name in processors:
-            if name in params.keys():
-                param=params[name]
-            else:
-                param={}
-            p=func(self.data,self.label,parameters=param)
-            self.data,self.label=p.transform(self.data,self.label)
-            self.ps.append(p)
 
-    def preprocess(self,processors=["naColFilter","fillNa","custom","tsToNum","catToNum","numToCat","variationSelector","entropySelector","mutInfoSelector","correlationSelector","normalization","normalizeFilter"],params={}):
+    def preprocess(self,processors=["naColSelector","fillNa","customFeatureEngineer","tsToNum","catToNum","numToCat","variationSelector","entropySelector","mutInfoSelector","correlationSelector",
+    "normalization","normalizeFilter","customFilter","normalization"],params={}):
         '''
         params:
         {
-            "naColFilter":
+            "naColSelector":
                 {
                     "cols": cols you want to process. Default=None means all cols. 
                     "threshold": Default=0.9. The col with nan > threshold will be removed.
@@ -68,9 +64,20 @@ class convergencerRegressionData:
                         }
                         other cols will use all values
                 }
-            "custom":
+            "customFeatureEngineer":
                 {
-                    "function": your custom processing function
+                    "fit": 
+                        def fit(data,y):
+                            ...
+                            return params
+                    "transform": 
+                        def transform(data,y,params):
+                            ...
+                            return data,y
+                    "reTransform":
+                        def reTransform(data,y,params):
+                            ...
+                            return data,y
                 }
             "tsToNum":
                 {
@@ -139,30 +146,44 @@ class convergencerRegressionData:
                 {
                     "cols": cols to scan. Default=None for all normal distributed number cols. 
                 }
+            "customFilter":
+                {
+                    "fit": 
+                        def fit(data,y):
+                            ...
+                            return params
+                    "transform": 
+                        def transform(data,y,params):
+                            ...
+                            return data,y
+                    "reTransform":
+                        def reTransform(data,y,params):
+                            ...
+                            return data,y
+                }
         }   
         '''
-        self.process("naColFilter",naColFilter,processors,params)
-        self.process("fillNa",fillNa,processors,params)
-        self.process("custom",custom,processors,params)
-        self.process("tsToNum",tsToNum,processors,params)
-        self.process("catToNum",catToNum,processors,params)
-        self.process("numToCat",numToCat,processors,params)
-        self.process("variationSelector",variationSelector,processors,params)
-        self.process("entropySelector",entropySelector,processors,params)
-        self.process("mutInfoSelector",mutInfoSelector,processors,params)
-        self.process("correlationSelector",correlationSelector,processors,params)
-        self.process("normalization",normalization,processors,params)
-        if "normalizeFilter" in processors:
-            if "normalizeFilter" in params.keys():
-                param=params["normalizeFilter"]
+        for p1 in processors:
+            if type(p1)==str:
+                for p2 in self.processors:
+                    if str(p2)==p1:
+                        if p1 in params.keys():
+                            parameter=params[p1]
+                        else:
+                            parameter={}
+                        self.processorsUsed.append(p2.initialize(parameter))
             else:
-                param={}
-            X=self.data.iloc[:self.trainNum]
-            test=self.data.iloc[self.trainNum:]
-            p=normalizeFilter(X,self.label,parameters=param)
-            X,self.label=p.transform(X,self.label)
-            self.trainNum=X.shape[0]
-            self.data=X.append(test)
+                self.processorsUsed.append(p1)
+        for p in self.processorsUsed:
+            if "Filter" in str(p):
+                X=self.data.iloc[:self.trainNum]
+                test=self.data.iloc[self.trainNum:]
+                p.fit(X,self.label)
+                X,self.label=p.transform(X,self.label)
+                self.trainNum=X.shape[0]
+                self.data=X.append(test)
+            else:
+                self.data,self.label=p.fit(self.data,self.label).transform(self.data,self.label)
         self.preprocessed=True
 
     def getXtrain(self):
@@ -174,19 +195,10 @@ class convergencerRegressionData:
     def gety(self):
         return self.label
     
-    def reProcess(self,label):
-        for p in self.ps:
-            if str(p)=="normalization":
-                _,label=p.reTransform(None,label)
-                return label
+    def trainValSplit(self,valRate=0.2):
+        return train_test_split(self.data.iloc[:self.trainNum], self.label, test_size=0.2)
 
-'''
-def regressionParaSearch(data,models=["linear","ridge","lasso","elasticNet","SVMRegression","dtRegression","rfRegression","gbRegression","xgbRegression","lgbmRegression","lgbmRegression_goss","catBoostRegression"],
-    params={},historySavePath=None,historyLoadPath=None,modelSavePath=None,modelLoadPath=None):
-    if not (data.preprocessed):
-        data.preprocess()
-
-def regressionSingleModel(data,model="linear",params={},modelSavePath=None,modelLoadPath=None):
-
-def regressionBaggingModel(data,models=[],params={},modelSavePath=None,modelLoadPath=None):
-'''
+    def reProcessy(self,label):
+        for p in self.processorsUsed[::-1]:
+            _,label=p.reTransform(None,label)
+            return label

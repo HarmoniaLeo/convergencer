@@ -7,25 +7,25 @@ from convergencer.processors import catToInt
 import math
 
 class dtRegression(base):
-    def initParameter(self, X, y, parameters):
+    def _initParameter(self, X, y, parameters):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
-        self.setParameter("max_depth",10,parameters)
-        self.setParameter("min_samples_split",np.log2(X.shape[0])/X.shape[0],parameters)
-        #self.setParameter("min_samples_leaf",np.log2(X.shape[0])/X.shape[0],parameters)
-        self.setParameter("max_features",1.0,parameters)
-        #self.setParameter("min_impurity_decrease",0.1,parameters)
-        return super().initParameter(X, y, parameters)
+        self._setParameter("max_depth",10,parameters)
+        self._setParameter("min_samples_split",np.log2(X.shape[0])/X.shape[0],parameters)
+        #self._setParameter("min_samples_leaf",np.log2(X.shape[0])/X.shape[0],parameters)
+        self._setParameter("max_features",1.0,parameters)
+        #self._setParameter("min_impurity_decrease",0.1,parameters)
+        return super()._initParameter(X, y, parameters)
     
-    def getParameterRange(self,X,y,parameters={}):
+    def _getParameterRange(self,X,y,parameters={}):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
-        self.setParameter("max_depth",(int,"uni",5,300),parameters)
-        self.setParameter("min_samples_split",(float,"exp",0,10.0*np.log2(X.shape[0])/X.shape[0]),parameters)
-        #self.setParameter("min_samples_leaf",(float,"uni",0.00001,10.0*np.log2(X.shape[0])/X.shape[0]),parameters)
-        self.setParameter("max_features",(float,"exp",0.5,1.0),parameters)
-        #self.setParameter("min_impurity_decrease",(float,"uni",0.0,1.0),parameters)
-        return super().getParameterRange(X,y,parameters=parameters)
+        self._setParameter("max_depth",(int,"uni",5,300),parameters)
+        self._setParameter("min_samples_split",(float,"exp",0,10.0*np.log2(X.shape[0])/X.shape[0]),parameters)
+        #self._setParameter("min_samples_leaf",(float,"uni",0.00001,10.0*np.log2(X.shape[0])/X.shape[0]),parameters)
+        self._setParameter("max_features",(float,"exp",0.5,1.0),parameters)
+        #self._setParameter("min_impurity_decrease",(float,"uni",0.0,1.0),parameters)
+        return super()._getParameterRange(X,y,parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath,metric):
+    def _getModel(self, X, y, parameters, modelPath,metric):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         if modelPath is None:
             return DecisionTreeRegressor(
@@ -35,25 +35,25 @@ class dtRegression(base):
             max_features=parameters["max_features"],    #划分时考虑的特征数
             #min_impurity_decrease=parameters["min_impurity_decrease"]*mst/parameters["max_depth"]   #大于该最小增益才分割
             )
-        return super().getModel(X, y, parameters, modelPath,metric)
+        return super()._getModel(X, y, parameters, modelPath,metric)
 
-    def getProcessors(self,X,y):
-        return [catToInt(X,verbose=0)]
+    def _getProcessors(self):
+        return [catToInt().initialize({},verbose=0)]
 
     def __str__(self):
         return "dtRegression"
 
 class rfRegression(dtRegression):
-    def initParameter(self, X, y, parameters):
-        self.setParameter("num",300,parameters)
-        return super().initParameter(X, y, parameters)
+    def _initParameter(self, X, y, parameters):
+        self._setParameter("num",300,parameters)
+        return super()._initParameter(X, y, parameters)
     
-    def getParameterRange(self, X, y, parameters={}):
-        self.setParameter("num",(int,"uni",100,1000),parameters)
-        self.setParameter("max_depth",(int,"uni",1,200),parameters)
-        return super().getParameterRange(X, y, parameters=parameters)
+    def _getParameterRange(self, X, y, parameters={}):
+        self._setParameter("num",(int,"uni",100,1000),parameters)
+        self._setParameter("max_depth",(int,"uni",1,200),parameters)
+        return super()._getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath,metric):
+    def _getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return RandomForestRegressor(
                 n_estimators=parameters["num"],
@@ -64,25 +64,25 @@ class rfRegression(dtRegression):
                 max_features=parameters["max_features"],
                 #min_impurity_decrease=parameters["min_impurity_decrease"]
             )
-        return super().getModel(X, y, parameters, modelPath)
+        return super()._getModel(X, y, parameters, modelPath,metric)
         
     def __str__(self):
         return "rfRegression"
 
 class gbRegression(rfRegression):
-    def initParameter(self, X, y, parameters):
-        self.setParameter("num",100,parameters)
-        self.setParameter("subsample",0.5,parameters)
-        self.setParameter("learning_rate",0.3,parameters)
-        return super().initParameter(X, y, parameters)
+    def _initParameter(self, X, y, parameters):
+        self._setParameter("num",100,parameters)
+        self._setParameter("subsample",0.5,parameters)
+        self._setParameter("learning_rate",0.3,parameters)
+        return super()._initParameter(X, y, parameters)
 
-    def getParameterRange(self, X, y, parameters={}):
-        self.setParameter("num",(int,"uni",10,1000),parameters)
-        self.setParameter("subsample",(float,"uni",0.5,1.0),parameters)
-        self.setParameter("learning_rate",(float,"exp",0.001,1.0),parameters)
-        return super().getParameterRange(X, y, parameters=parameters)
+    def _getParameterRange(self, X, y, parameters={}):
+        self._setParameter("num",(int,"uni",10,1000),parameters)
+        self._setParameter("subsample",(float,"uni",0.5,1.0),parameters)
+        self._setParameter("learning_rate",(float,"exp",0.001,1.0),parameters)
+        return super()._getParameterRange(X, y, parameters=parameters)
 
-    def getModel(self, X, y, parameters, modelPath,metric):
+    def _getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return GradientBoostingRegressor(
             n_estimators=parameters["num"],
@@ -94,7 +94,7 @@ class gbRegression(rfRegression):
             max_features=parameters["max_features"],
             #min_impurity_decrease=parameters["min_impurity_decrease"]
             )
-        return super().getModel(X, y, parameters, modelPath)
+        return super()._getModel(X, y, parameters, modelPath,metric)
         
     def __str__(self):
         return "gbRegression"
