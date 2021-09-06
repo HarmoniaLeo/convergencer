@@ -8,6 +8,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 class xgbRegression(base):
+    def _getClass(self):
+        return xgbRegression()
+
     def _initParameter(self, X, y, parameters):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         self._setParameter("num_boost_round",300,parameters)
@@ -49,7 +52,7 @@ class xgbRegression(base):
         return model
 
     def _fitModel(self, X,y, model, parameters,metric):
-        X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2)
+        X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.15)
         xgtrain = xgb.DMatrix(X_train, label=y_train,enable_categorical=True)
         xgtest = xgb.DMatrix(X_test, label=y_test,enable_categorical=True)
         watchlist = [(xgtrain, 'train'),(xgtest, 'val')]
@@ -71,6 +74,9 @@ class xgbRegression(base):
         return "xgbRegression"
 
 class xgbRegression_dart(xgbRegression):
+    def _getClass(self):
+        return xgbRegression_dart()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("rate_drop",0.0,parameters)
         self._setParameter("skip_drop",0.0,parameters)

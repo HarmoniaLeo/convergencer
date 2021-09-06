@@ -9,6 +9,9 @@ import warnings
 from sklearn.model_selection import train_test_split
 
 class lgbmRegressionBase(base):
+    def _getClass(self):
+        return lgbmRegression()
+
     def _initParameter(self, X, y, parameters):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         self._setParameter("num",1000,parameters)
@@ -57,7 +60,7 @@ class lgbmRegressionBase(base):
         es=int(parameters.pop("early_stopping_round")*rounds)
         self._setParameter("boosting","gbdt",parameters)
         self._setParameter("verbose",-1,parameters)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15)
         train_data=lgb.Dataset(X_train,y_train,params=parameters,free_raw_data=False,feature_name=feature_name,categorical_feature=categorical_feature)
         test_data=lgb.Dataset(X_test,y_test,params=parameters,free_raw_data=False,feature_name=feature_name,categorical_feature=categorical_feature)
         with warnings.catch_warnings():
@@ -71,6 +74,9 @@ class lgbmRegressionBase(base):
         return pd.Series(model.predict(X,num_iteration=model.best_iteration),X.index)
     
 class lgbmRegression(lgbmRegressionBase):
+    def _getClass(self):
+        return lgbmRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("early_stopping_round",0.05,parameters)
         self._setParameter("bagging_freq",10,parameters)
@@ -87,6 +93,9 @@ class lgbmRegression(lgbmRegressionBase):
         return "lgbmRegression"
 
 class lgbmRegression_dart(lgbmRegressionBase):
+    def _getClass(self):
+        return lgbmRegression_dart()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("drop_rate",0.1,parameters)
         self._setParameter("bagging_freq",10,parameters)
@@ -112,11 +121,13 @@ class lgbmRegression_dart(lgbmRegressionBase):
             warnings.filterwarnings("ignore", category=UserWarning)
             return lgb.train(parameters, train_data,rounds, valid_sets=[test_data],feval=metric.lgbm,verbose_eval=False)
     
-        
     def __str__(self):
         return "lgbmRegression_dart"
 
 class lgbmRegression_goss(lgbmRegressionBase):
+    def _getClass(self):
+        return lgbmRegression_goss()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("early_stopping_round",0.05,parameters)
         return super()._initParameter(X, y, parameters)

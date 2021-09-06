@@ -2,6 +2,7 @@ from convergencer.utils.io import readData,readLabel
 import numpy as np
 from convergencer.processors import naColSelector,fillNa,customFeatureEngineer,tsToNum,catToNum,numToCat,variationSelector,entropySelector,mutInfoSelector,correlationSelector,normalization,normalizeFilter,customFilter
 from sklearn.model_selection import train_test_split
+import pandas as pd
 
 class convergencerRegressionData:
     def __init__(self,X_train,X_test=None,label=-1,id=None,labelId=None,delimiter=','):
@@ -30,7 +31,7 @@ class convergencerRegressionData:
         print(self.data[col].isna().sum()/self.data[col].isna().count())
 
     def preprocess(self,processors=["naColSelector","fillNa","customFeatureEngineer","tsToNum","catToNum","numToCat","variationSelector","entropySelector","mutInfoSelector","correlationSelector",
-    "normalization","normalizeFilter","customFilter","normalization"],params={}):
+    "normalization","normalizeFilter","customFilter"],params={}):
         '''
         params:
         {
@@ -196,9 +197,9 @@ class convergencerRegressionData:
         return self.label
     
     def trainValSplit(self,valRate=0.2):
-        return train_test_split(self.data.iloc[:self.trainNum], self.label, test_size=0.2)
+        return train_test_split(self.data.iloc[:self.trainNum], self.label, test_size=valRate)
 
     def reProcessy(self,label):
         for p in self.processorsUsed[::-1]:
-            _,label=p.reTransform(None,label)
-            return label
+            _,label=p.reTransform(pd.DataFrame(),label)
+        return label

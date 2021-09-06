@@ -5,11 +5,12 @@ import multiprocessing
 import torch
 import numpy as np
 from sklearn.model_selection import train_test_split
-from convergencer.utils.metrics import mspe
-from sklearn.model_selection import KFold
 import pandas as pd
 
 class catBoostRegression(base):
+    def _getClass(self):
+        return catBoostRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("iterations",1000,parameters)
         self._setParameter("learning_rate",0.3,parameters)
@@ -53,7 +54,7 @@ class catBoostRegression(base):
         ttn = X.select_dtypes(exclude=[np.number])
         cols=ttn.columns
         categorical_feature=cols.tolist()
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15)
         train_pool = Pool(X_train,y_train,cat_features=categorical_feature)
         test_pool = Pool(X_test,y_test,cat_features=categorical_feature)
         model.fit(train_pool,eval_set=test_pool,logging_level="Silent",use_best_model=True)

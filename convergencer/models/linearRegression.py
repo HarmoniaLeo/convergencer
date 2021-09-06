@@ -7,6 +7,9 @@ class linear(base):
     def parasearchFit(self,X,y, metric="r2",maxEpoch=1000,modelSavePath=None,modelSaveFreq=50,historySavePath=None,historySaveFreq=50):
         return super().fit(X,y,metric,None,modelSavePath)
 
+    def _getClass(self):
+        return linear()
+
     def _getModel(self, X, y, parameters, modelPath,metric):
         if modelPath is None:
             return LinearRegression()
@@ -20,6 +23,9 @@ class linear(base):
 
 
 class ridge(base):
+    def _getClass(self):
+        return ridge()
+
     def _initParameter(self,X,y, parameters):
         self._setParameter("alpha",1.0,parameters)
         return super()._initParameter(X, y, parameters)
@@ -40,6 +46,9 @@ class ridge(base):
         return "ridge"
 
 class lasso(ridge):
+    def _getClass(self):
+        return lasso()
+
     def _initParameter(self,X,y, parameters):
         self._setParameter("alpha",0.0001,parameters)
         return super()._initParameter(X, y, parameters)
@@ -57,6 +66,9 @@ class lasso(ridge):
         return "lasso"
 
 class elasticNet(lasso):
+    def _getClass(self):
+        return elasticNet()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("l1Rate",0.5,parameters)
         return super()._initParameter(X, y, parameters)

@@ -8,6 +8,9 @@ from convergencer.processors import normalizeScaler,catToMean
 
 
 class TabNetRegression(base):
+    def _getClass(self):
+        return TabNetRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("n_d",8,parameters)
         self._setParameter("n_steps",3,parameters)
@@ -54,7 +57,8 @@ class TabNetRegression(base):
             model=TabNetRegressor()
             return model.load_model(modelPath)
 
-    def _fitModel(self, X_train, y_train, X_test, y_test, model, parameters,metric):
+    def _fitModel(self, X, y, model, parameters,metric):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15)
         model.fit(
             X_train.values,np.array([y_train.values]).T,
             eval_set=[(X_test.values, np.array([y_test.values]).T)],
@@ -72,12 +76,12 @@ class TabNetRegression(base):
     def _trainModel(self,X,y,parameters,metric):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         model=self._getModel(X,y,parameters,None,metric)
-        model=self._fitModel(X_train,y_train,X_test,y_test,model,parameters,metric)
+        model=self._fitModel(X_train,y_train,model,parameters,metric)
         y_train_pred=self._modelPredict(model,X_train)
         y_test_pred=self._modelPredict(model,X_test)
-        return metric.evaluate(y_train,y_train_pred),metric.evaluate(y_test,y_test_pred)
+        return metric.evaluate(y_train,y_train_pred),metric.evaluate(y_test,y_test_pred),None
 
-    def _getProcessors(self,X,y):
+    def _getProcessors(self):
         return [catToMean().initialize({},verbose=0),normalizeScaler().initialize({},verbose=0)]
 
     def _saveModel(self, path):

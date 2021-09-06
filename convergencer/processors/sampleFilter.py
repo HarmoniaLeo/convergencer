@@ -56,6 +56,33 @@ class naRowFilter(base):
     def __str__(self):
         return "naRowFilter"
 
-class customFilter(customFeatureEngineer):
+def defaultFunc(data):
+    return data
+
+class customFilter(base):
+    def initialize(self,parameters={},verbose=1):
+        '''
+        parameters:
+            {
+                "transform": 
+                    def transform(data):
+                        ...
+                        return data
+            }
+        '''
+        self.verbose=verbose
+        self.transFunction=self._getParameter("transform",defaultFunc,parameters)
+        return self
+    
+    def transform(self, data, y=None):
+        if self.verbose==1:
+            print("\n-------------------------Using custom fuction to filter samples-------------------------")
+        if not (y is None):
+            y=y.copy()
+        data=data.copy()
+        data=self.transFunction(data)
+        y=y.loc[data.index]
+        return super().transform(data, y=y)
+
     def __str__(self):
         return "customFilter"

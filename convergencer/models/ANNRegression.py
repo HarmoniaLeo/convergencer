@@ -8,6 +8,9 @@ from convergencer.processors import normalizeScaler,catToMean
 from sklearn.model_selection import train_test_split
 
 class ANNRegression(base):
+    def _getClass(self):
+        return ANNRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("layers",3,parameters)
         self._setParameter("hidden_count",64,parameters)

@@ -4,6 +4,9 @@ from convergencer.models import base
 from convergencer.processors import catToInt,robustScaler,normalizeScaler,catToOneHot
 
 class SVMRegression(base):
+    def _getClass(self):
+        return SVMRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("C",1.0,parameters)
         return super()._initParameter(X, y, parameters)
@@ -25,6 +28,9 @@ class SVMRegression(base):
         return "SVMRegression"
 
 class NuSVMRegression(SVMRegression):
+    def _getClass(self):
+        return NuSVMRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("nu",1.0,parameters)
         return super()._initParameter(X, y, parameters)

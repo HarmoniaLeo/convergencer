@@ -7,6 +7,9 @@ from convergencer.processors import catToInt
 import math
 
 class dtRegression(base):
+    def _getClass(self):
+        return dtRegression()
+
     def _initParameter(self, X, y, parameters):
         #mst=np.sum(np.power(y-np.mean(y),2))/len(y)
         self._setParameter("max_depth",10,parameters)
@@ -44,6 +47,9 @@ class dtRegression(base):
         return "dtRegression"
 
 class rfRegression(dtRegression):
+    def _getClass(self):
+        return rfRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("num",300,parameters)
         return super()._initParameter(X, y, parameters)
@@ -70,6 +76,9 @@ class rfRegression(dtRegression):
         return "rfRegression"
 
 class gbRegression(rfRegression):
+    def _getClass(self):
+        return gbRegression()
+
     def _initParameter(self, X, y, parameters):
         self._setParameter("num",100,parameters)
         self._setParameter("subsample",0.5,parameters)

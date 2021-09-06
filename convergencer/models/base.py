@@ -1,5 +1,4 @@
 from convergencer.utils.optimizing import bayesianOpt
-from sklearn.model_selection import KFold
 import numpy as np
 import pandas as pd
 from joblib import dump, load
@@ -9,107 +8,123 @@ import os
 from tqdm import tqdm
 
 class base:
-    def initialize(self,X,y,parameters={},historyLoadPath=None,verbose=1):
-        self.verbose=verbose
+    def __init__(self):
+        self.verbose=1
         self.paramHistory=[]
         self.processors=self._getProcessors()
+        self.model=None
+        self.parameters=None
+        self.trainAcc=None
+        self.testAcc=None
+        self.trainPred=None
+
+    def initialize(self,X,y,parameters={},historyLoadPath=None,verbose=1):
+        newModel=self._getClass()
+        newModel.verbose=verbose
         if historyLoadPath==None:
-            self.parameters=self._initParameter(X,y,parameters)
+            newModel.parameters=newModel._initParameter(X,y,parameters)
         else:
-            if self.verbose>0:
+            if newModel.verbose>0:
                 print("Read parameters from:",historyLoadPath)
-            self.paramHistory = readDict(historyLoadPath)
-            self.parameters=self.paramHistory[-1]["best_params"]
-        if self.verbose>0:
-            print("\n-------------------------Model: "+str(self)+" initialized-------------------------")
-        if self.verbose==2:
-            print("Initial parameters: ",self.parameters)
-        return self
+            newModel.paramHistory = readDict(historyLoadPath)
+            newModel.parameters=newModel.paramHistory[-1]["best_params"]
+        if newModel.verbose>0:
+            print("\n-------------------------Model: "+str(newModel)+" initialized-------------------------")
+        if newModel.verbose==2:
+            print("Initial parameters: ",newModel.parameters)
+        return newModel
 
     def fit(self,X,y,metric="r2",modelLoadPath=None,modelSavePath=None):
+        newModel=self._getClass()
+        newModel.parameters=self.parameters
+        newModel.verbose=self.verbose
+        newModel.paramHistory=self.paramHistory
         metric=getMetric(metric)
-        if self.verbose>0:
-            print("\n-------------------------Model: "+str(self)+" fitting-------------------------")
+        if newModel.verbose>0:
+            print("\n-------------------------Model: "+str(newModel)+" fitting-------------------------")
         if modelLoadPath is None:
-            for p in self.processors:
+            for p in newModel.processors:
                 X=p.fit(X,y).transform(X)
-            self.trainAcc,self.testAcc=self._trainModel(X,y,self.parameters,metric)
-            if self.verbose>0:
-                print("Initial score on train set: {0}".format(self.trainAcc)+" Initial score on test set: {0}".format(self.testAcc))
-            self.model=self._fitModel(X,y,self._getModel(X,y,self.parameters,None,metric),self.parameters,metric)
+            newModel.trainAcc,newModel.testAcc,newModel.trainPred=newModel._trainModel(X,y,newModel.parameters,metric)
+            if newModel.verbose>0:
+                print("Initial score on train set: {0}".format(newModel.trainAcc)+" Initial score on test set: {0}".format(newModel.testAcc))
+            newModel.model=newModel._fitModel(X,y,newModel._getModel(X,y,newModel.parameters,None,metric),newModel.parameters,metric)
             if not (modelSavePath is None):
                 if not(os.path.exists(modelSavePath)):
                     os.makedirs(modelSavePath)
-                if self.verbose==2:
+                if newModel.verbose==2:
                     print("Save model as: ",modelSavePath)
-                self._saveModel(os.path.join(modelSavePath,str(self)+"-model-init"))
+                newModel._saveModel(os.path.join(modelSavePath,str(newModel)+"-model-init"))
         else:
-            self.model=self._getModel(X,y,self.parameters,modelLoadPath,metric)
-            if self.verbose>0:
+            newModel.model=newModel._getModel(X,y,newModel.parameters,modelLoadPath,metric)
+            if newModel.verbose>0:
                 print("Loaded from: "+modelLoadPath)
-        return self
+        return newModel
     
     def parasearchFit(self,X,y,metric="r2",maxEpoch=1000,modelSavePath=None,modelSaveFreq=50,historySavePath=None,historySaveFreq=50):
-        self.fit(X,y,metric,None,modelSavePath)
-        for p in self.processors:
+        newModel=self.fit(X,y,metric,None,modelSavePath)
+        for p in newModel.processors:
             X=p.transform(X)
         metric=getMetric(metric)
         startEpoch=0
-        optimizer = bayesianOpt(pbounds=self._getParameterRange(X,y,parameters={}),initParams=self.parameters)
-        model=self.model
-        testAcc=self.testAcc
+        optimizer = bayesianOpt(pbounds=newModel._getParameterRange(X,y,parameters={}),initParams=newModel.parameters)
+        testAcc=newModel.testAcc
         next_point_to_probe = optimizer.next(target=testAcc,ifMax=metric.maximum())
-        for i in range(0,len(self.paramHistory)):
-            next_point_to_probe = optimizer.next(target=self.paramHistory[i]["score"],ifMax=metric.maximum(),params=self.paramHistory[i]["params"])
+        for i in range(0,len(newModel.paramHistory)):
+            next_point_to_probe = optimizer.next(target=newModel.paramHistory[i]["score"],ifMax=metric.maximum(),params=newModel.paramHistory[i]["params"])
             startEpoch+=1
 
-        for i in (tqdm(range(startEpoch,maxEpoch)) if self.verbose==1 else range(startEpoch,maxEpoch)):
-            if self.verbose==2:
-                print("Model: "+str(self)+" Epoch {0} ".format(i))
+        for i in (tqdm(range(startEpoch,maxEpoch)) if newModel.verbose==1 else range(startEpoch,maxEpoch)):
+            if newModel.verbose==2:
+                print("Model: "+str(newModel)+" Epoch {0} ".format(i))
                 print("Parameters: ",next_point_to_probe)
-            trainAcc,testAcc=self._trainModel(X,y,next_point_to_probe,metric)
-            if ((testAcc>self.testAcc) if metric.maximum() else (testAcc<self.testAcc)):
-                self.parameters=next_point_to_probe
-                self.trainAcc=trainAcc
-                self.testAcc=testAcc
-            if self.verbose==2:
+            trainAcc,testAcc,trainPred=newModel._trainModel(X,y,next_point_to_probe,metric)
+            if ((testAcc>newModel.testAcc) if metric.maximum() else (testAcc<newModel.testAcc)):
+                newModel.parameters=next_point_to_probe
+                newModel.trainAcc=trainAcc
+                newModel.testAcc=testAcc
+                newModel.trainPred=trainPred
+            if newModel.verbose==2:
                 print("Score on train set: {0}".format(trainAcc)+" Score on test set: {0}".format(testAcc))
             if not (historySavePath is None):
-                self.paramHistory.append({"params":next_point_to_probe,"score":testAcc,"best_params":self.parameters,"metric":metric})
+                newModel.paramHistory.append({"params":next_point_to_probe,"score":testAcc,"best_params":newModel.parameters,"metric":metric})
                 if (i+1)%historySaveFreq==0:
                     if not(os.path.exists(historySavePath)):
                         os.makedirs(historySavePath)
-                    if self.verbose==2:
+                    if newModel.verbose==2:
                         print("Save parameters to: ",historySavePath)
-                    saveDict(self.paramHistory,os.path.join(historySavePath,str(self)+"-"+metric+"-history-epoch{0}".format(i)))
+                    saveDict(newModel.paramHistory,os.path.join(historySavePath,str(newModel)+"-"+metric+"-history-epoch{0}".format(i)))
             if (not (modelSavePath is None)) and ((i+1)%modelSaveFreq==0):
                 if not(os.path.exists(modelSavePath)):
                     os.makedirs(modelSavePath)
-                if self.verbose==2:
+                if newModel.verbose==2:
                     print("Save model as: ",modelSavePath)
-                self.model=self._fitModel(X,y,self._getModel(X,y,self.parameters,None,metric),self.parameters,metric)
-                self.saveModel(os.path.join(modelSavePath,str(self)+"-model-epoch{0}".format(i)))
+                newModel.model=newModel._fitModel(X,y,newModel._getModel(X,y,newModel.parameters,None,metric),newModel.parameters,metric)
+                newModel.saveModel(os.path.join(modelSavePath,str(newModel)+"-model-epoch{0}".format(i)))
             next_point_to_probe = optimizer.next(target=testAcc,ifMax=metric.maximum())
 
-        print("\nModel: "+str(self))
-        print("Score on train set: {0}".format(self.trainAcc)+" Score on test set: {0}".format(self.testAcc))
-        print("Parameters: ",self.parameters)
-        self.model=self._fitModel(X,y,self._getModel(X,y,self.parameters,None,metric),self.parameters,metric)
+        print("\nModel: "+str(newModel))
+        print("Score on train set: {0}".format(newModel.trainAcc)+" Score on test set: {0}".format(newModel.testAcc))
+        print("Parameters: ",newModel.parameters)
+        newModel.model=newModel._fitModel(X,y,newModel._getModel(X,y,newModel.parameters,None,metric),newModel.parameters,metric)
         if not (historySavePath is None):
             if not(os.path.exists(historySavePath)):
                 os.makedirs(historySavePath)
-            saveDict(self.paramHistory,os.path.join(historySavePath,str(self)+"-"+metric+"-history-final"))
+            saveDict(newModel.paramHistory,os.path.join(historySavePath,str(newModel)+"-"+metric+"-history-final"))
         if not (modelSavePath is None):
             if not(os.path.exists(modelSavePath)):
                 os.makedirs(modelSavePath)
-            self._saveModel(os.path.join(modelSavePath,str(self)+"-model-final"))
-        return self
+            newModel._saveModel(os.path.join(modelSavePath,str(newModel)+"-model-final"))
+        return newModel
         
     def predict(self,X):
         for p in self.processors:
             X=p.transform(X)
         data=X
         return self._modelPredict(self.model,data)
+    
+    def _getClass(self):
+        return base()
 
     def _setParameter(self,key,value,parameters):
         if key not in parameters:
@@ -138,21 +153,29 @@ class base:
         return pd.Series(model.predict(X),X.index)
 
     def _trainModel(self,X,y,parameters,metric):
-        kf = KFold(n_splits=5,shuffle=True)
         trainAccs=[]
         testAccs=[]
-        for train_index, test_index in kf.split(X,y):
-            X_train=X.iloc[train_index]
-            X_test=X.iloc[test_index]
-            y_train=y.iloc[train_index]
-            y_test=y.iloc[test_index]
+        trainPred=pd.Series(index=y.index)
+        indexs=X.index
+        folds=5
+        step=int(indexs.shape[0]/folds)
+        kfold=[]
+        for i in range(folds-1):
+            kfold.append((np.concatenate([indexs[0:i*step],indexs[i*step+step:]]),indexs[i*step:i*step+step]))
+        kfold.append((indexs[0:(folds-1)*step],indexs[(folds-1)*step:]))
+        for train_index, test_index in kfold:
+            X_train=X.loc[train_index]
+            X_test=X.loc[test_index]
+            y_train=y[train_index]
+            y_test=y[test_index]
             model=self._getModel(X,y,parameters,None,metric)
             model=self._fitModel(X_train,y_train,model,parameters,metric)
             y_train_pred=self._modelPredict(model,X_train)
             y_test_pred=self._modelPredict(model,X_test)
+            trainPred[y_test_pred.index]=y_test_pred
             trainAccs.append(metric.evaluate(y_train,y_train_pred))
             testAccs.append(metric.evaluate(y_test,y_test_pred))
-        return np.mean(trainAccs),np.mean(testAccs)
+        return np.mean(trainAccs),np.mean(testAccs),trainPred
 
     def _saveModel(self,path):
         dump(self.model, path)
